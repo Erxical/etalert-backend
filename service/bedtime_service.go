@@ -49,8 +49,8 @@ func (s bedtimeService) GetBedtimeInfo(gId string) (*BedtimeResponse, error) {
 	return &bedtimeResponse, nil
 }
 
-func (s bedtimeService) UpdateBedtime(gId string, bedtime *BedtimeUpdater) error {
-	err := s.bedtimeRepo.UpdateBedtime(gId, &repository.Bedtime{
+func (s bedtimeService) UpdateBedtime(gId string, bedtime *BedtimeResponse) error {
+	err := s.bedtimeRepo.UpdateBedtime(gId, &repository.BedtimeUpdater{
 		SleepTime: bedtime.SleepTime,
 		WakeTime:  bedtime.WakeTime,
 	})

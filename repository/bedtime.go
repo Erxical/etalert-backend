@@ -6,8 +6,13 @@ type Bedtime struct {
 	WakeTime  string `bson:"wakeTime"`
 }
 
+type BedtimeUpdater struct {
+	SleepTime string `bson:"sleepTime"`
+	WakeTime  string `bson:"wakeTime"`
+}
+
 type BedtimeRepository interface {
 	InsertBedtime(bedtime *Bedtime) error
 	GetBedtimeInfo(string) (*Bedtime, error)
-	UpdateBedtime(str string, bedtime *Bedtime) error
+	UpdateBedtime(string, *BedtimeUpdater) error
 }

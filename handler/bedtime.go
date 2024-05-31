@@ -16,6 +16,11 @@ type createBedtimeRequest struct {
 	WakeTime  string `json:"wakeTime"`
 }
 
+type updateBedtimeRequest struct {
+	SleepTime string `json:"sleepTime"`
+	WakeTime  string `json:"wakeTime"`
+}
+
 type createBedtimeResponse struct {
 	Message string `json:"message"`
 }
@@ -64,12 +69,12 @@ func (h *bedtimeHandler) GetBedtimeInfo(c *fiber.Ctx) error {
 func (h *bedtimeHandler) UpdateBedtime(c *fiber.Ctx) error {
 	googleId := c.Params("googleId")
 
-	var req createBedtimeRequest
+	var req updateBedtimeRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
 	}
 
-	bedtime := &service.BedtimeUpdater{
+	bedtime := &service.BedtimeResponse{
 		SleepTime: req.SleepTime,
 		WakeTime:  req.WakeTime,
 	}

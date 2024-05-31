@@ -6,11 +6,6 @@ type BedtimeInput struct {
 	WakeTime  string `bson:"wakeTime"`
 }
 
-type BedtimeUpdater struct {
-	SleepTime string `bson:"sleepTime"`
-	WakeTime  string `bson:"wakeTime"`
-}
-
 type BedtimeResponse struct {
 	SleepTime string `bson:"sleepTime"`
 	WakeTime  string `bson:"wakeTime"`
@@ -19,5 +14,5 @@ type BedtimeResponse struct {
 type BedtimeService interface {
 	InsertBedtime(bedtime *BedtimeInput) error
 	GetBedtimeInfo(string) (*BedtimeResponse, error)
-	UpdateBedtime(str string, bedtime *BedtimeUpdater) error
+	UpdateBedtime(str string, bedtime *BedtimeResponse) error
 }

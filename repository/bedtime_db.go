@@ -35,7 +35,7 @@ func (r bedtimeRepositoryDB) GetBedtimeInfo(gId string) (*Bedtime, error) {
 	return &bedtime, nil
 }
 
-func (r *bedtimeRepositoryDB) UpdateBedtime(gId string, bedtime *Bedtime) error {
+func (r *bedtimeRepositoryDB) UpdateBedtime(gId string, bedtime *BedtimeUpdater) error {
 	ctx := context.Background()
 	filter := bson.M{"googleId": gId}
 	update := bson.M{"$set": bedtime}

@@ -10,5 +10,5 @@ type User struct {
 type UserRepository interface {
 	InsertUser(user *User) error
 	GetUserInfo(string) (*User, error)
-	UpdateUser(str string, user *User) error
+	UpdateUser(string, *User) error
 }
