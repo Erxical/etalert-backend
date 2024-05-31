@@ -15,19 +15,20 @@ func NewUserService(userRepo repository.UserRepository) UserService {
 
 var ErrUserAlreadyExists = errors.New("user already exists")
 
-func (s *userService) InsertUser(user *UserInput) error {
-	existingUser, err := s.userRepo.GetUser(user.GoogleId)
+func (s userService) InsertUser(user *UserInput) error {
+	existingUser, err := s.userRepo.GetUserInfo(user.GoogleId)
 	if err != nil {
 		return err
 	}
 	if existingUser != nil {
 		return ErrUserAlreadyExists
 	}
+
 	err = s.userRepo.InsertUser(&repository.User{
+		GoogleId: user.GoogleId,
+		Email:    user.Email,
 		Name:     user.Name,
 		Image:    user.Image,
-		Email:    user.Email,
-		GoogleId: user.GoogleId,
 	})
 	if err != nil {
 		return err
@@ -35,13 +36,13 @@ func (s *userService) InsertUser(user *UserInput) error {
 	return nil
 }
 
-func (s userService) GetUser(gId string) (*UserResponse, error) {
-	user, err := s.userRepo.GetUser(gId)
+func (s userService) GetUserInfo(gId string) (*UserInfoResponse, error) {
+	user, err := s.userRepo.GetUserInfo(gId)
 	if err != nil {
 		return nil, err
 	}
 
-	userResponse := UserResponse{
+	userResponse := UserInfoResponse{
 		Name:  user.Name,
 		Image: user.Image,
 		Email: user.Email,

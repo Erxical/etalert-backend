@@ -49,10 +49,10 @@ func (h *userHandler) CreateUser(c *fiber.Ctx) error {
 	return c.Status(http.StatusCreated).JSON(createUserResponse{Message: "User created successfully"})
 }
 
-func (h *userHandler) GetUser(c *fiber.Ctx) error {
+func (h *userHandler) GetUserInfo(c *fiber.Ctx) error {
 	googleId := c.Params("googleId")
 
-	user, err := h.usersrv.GetUser(googleId)
+	user, err := h.usersrv.GetUserInfo(googleId)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get user"})
 	}

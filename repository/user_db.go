@@ -21,7 +21,7 @@ func (r *userRepositoryDB) InsertUser(user *User) error {
 	return err
 }
 
-func (r userRepositoryDB) GetUser(gId string) (*User, error) {
+func (r userRepositoryDB) GetUserInfo(gId string) (*User, error) {
 	ctx := context.Background()
 	var user User
 	filter := bson.M{"googleId": gId}

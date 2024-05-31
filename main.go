@@ -35,11 +35,18 @@ func main() {
 	userService := service.NewUserService(userRepository)
 	userHandler := handler.NewUserHandler(userService)
 
+	bedtimeRepository := repository.NewBedtimeRepositoryDB(client, "etalert", "bedtime")
+	bedtimeService := service.NewBedtimeService(bedtimeRepository)
+	bedtimeHandler := handler.NewBedtimeHandler(bedtimeService)
+
 	// initialize new instance of fiber
 	server := fiber.New()
 
 	server.Post("/users", userHandler.CreateUser)
-	server.Get("/users/:googleId", userHandler.GetUser)
+	server.Get("/users/:googleId", userHandler.GetUserInfo)
+	server.Post("/users/bedtimes", bedtimeHandler.CreateBedtime)
+	server.Get("/users/bedtimes/info/:googleId", bedtimeHandler.GetBedtimeInfo)
+	server.Post("/users/bedtimes/:googleId", bedtimeHandler.UpdateBedtime)
 
 	// listen to port 8000
 	log.Fatal(server.Listen("localhost:8000"))
