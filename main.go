@@ -43,10 +43,11 @@ func main() {
 	server := fiber.New()
 
 	server.Post("/users", userHandler.CreateUser)
-	server.Get("/users/:googleId", userHandler.GetUserInfo)
+	server.Get("/users/info/:googleId", userHandler.GetUserInfo)
+	server.Patch("/users/:googleId", userHandler.UpdateUser)
 	server.Post("/users/bedtimes", bedtimeHandler.CreateBedtime)
 	server.Get("/users/bedtimes/info/:googleId", bedtimeHandler.GetBedtimeInfo)
-	server.Post("/users/bedtimes/:googleId", bedtimeHandler.UpdateBedtime)
+	server.Patch("/users/bedtimes/:googleId", bedtimeHandler.UpdateBedtime)
 
 	// listen to port 8000
 	log.Fatal(server.Listen("localhost:8000"))

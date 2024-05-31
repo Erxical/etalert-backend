@@ -9,6 +9,11 @@ type UserInput struct {
 	WakeTime  string `bson:"wakeTime"`
 }
 
+type UserUpdater struct {
+	Name  string `bson:"name"`
+	Image string `bson:"image"`
+}
+
 type UserInfoResponse struct {
 	Name  string `bson:"name"`
 	Image string `bson:"image"`
@@ -18,4 +23,5 @@ type UserInfoResponse struct {
 type UserService interface {
 	InsertUser(user *UserInput) error
 	GetUserInfo(string) (*UserInfoResponse, error)
+	UpdateUser(string, *UserUpdater) error
 }

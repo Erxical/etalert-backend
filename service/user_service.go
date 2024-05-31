@@ -50,3 +50,14 @@ func (s userService) GetUserInfo(gId string) (*UserInfoResponse, error) {
 
 	return &userResponse, nil
 }
+
+func (s userService) UpdateUser(gId string, user *UserUpdater) error {
+	err := s.userRepo.UpdateUser(gId, &repository.User{
+		Name:  user.Name,
+		Image: user.Image,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}

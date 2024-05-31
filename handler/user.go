@@ -62,3 +62,23 @@ func (h *userHandler) GetUserInfo(c *fiber.Ctx) error {
 
 	return c.Status(http.StatusOK).JSON(user)
 }
+
+func (h *userHandler) UpdateUser(c *fiber.Ctx) error {
+	googleId := c.Params("googleId")
+	var req createUserRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+	}
+
+	user := &service.UserUpdater{
+		Name:  req.Name,
+		Image: req.Image,
+	}
+
+	err := h.usersrv.UpdateUser(googleId, user)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update user"})
+	}
+
+	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "User updated successfully"})
+}

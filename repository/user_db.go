@@ -34,3 +34,16 @@ func (r userRepositoryDB) GetUserInfo(gId string) (*User, error) {
 	}
 	return &user, nil
 }
+
+func (r userRepositoryDB) UpdateUser(gId string, user *User) error {
+	ctx := context.Background()
+	filter := bson.M{"googleId": gId}
+	update := bson.M{
+		"$set": bson.M{
+			"name":  user.Name,
+			"image": user.Image,
+		},
+	}
+	_, err := r.collection.UpdateOne(ctx, filter, update)
+	return err
+}

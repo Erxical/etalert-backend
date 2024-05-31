@@ -63,6 +63,7 @@ func (h *bedtimeHandler) GetBedtimeInfo(c *fiber.Ctx) error {
 
 func (h *bedtimeHandler) UpdateBedtime(c *fiber.Ctx) error {
 	googleId := c.Params("googleId")
+
 	var req createBedtimeRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
