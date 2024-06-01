@@ -43,9 +43,13 @@ func main() {
 	routineService := service.NewRoutineService(routineRepository)
 	routineHandler := handler.NewRoutineHandler(routineService)
 
+	authService := service.NewAuthService(userRepository)
+	authHandler := handler.NewAuthHandler(authService)
+
 	// initialize new instance of fiber
 	server := fiber.New()
 
+	server.Post("/login", authHandler.Login)
 	server.Post("/users", userHandler.CreateUser)
 	server.Patch("/users/:googleId", userHandler.UpdateUser)
 	server.Get("/users/info/:googleId", userHandler.GetUserInfo)
