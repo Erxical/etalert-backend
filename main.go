@@ -61,5 +61,5 @@ func main() {
 	server.Get("/users/routines/info/:googleId", routineHandler.GetRoutineInfo)
 
 	// listen to port 8000
-	log.Fatal(server.Listen("localhost:8000"))
+	log.Fatal(server.Listen("localhost:3000"))
 }
