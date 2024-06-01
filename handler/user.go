@@ -2,6 +2,7 @@ package handler
 
 import (
 	"etalert-backend/service"
+	"etalert-backend/validators"
 	"github.com/gofiber/fiber/v2"
 	"net/http"
 )
@@ -11,10 +12,10 @@ type userHandler struct {
 }
 
 type createUserRequest struct {
-	Name     string `json:"name"`
-	Image    string `json:"image"`
-	Email    string `json:"email"`
-	GoogleId string `json:"googleId"`
+	Name     string `json:"name" validate:"required"`
+	Image    string `json:"image" validate:"required"`
+	Email    string `json:"email" validate:"required"`
+	GoogleId string `json:"googleId" validate:"required"`
 }
 
 type createUserResponse struct {
@@ -29,6 +30,10 @@ func (h *userHandler) CreateUser(c *fiber.Ctx) error {
 	var req createUserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+	}
+
+	if err := validators.ValidateStruct(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	user := &service.UserInput{
@@ -68,6 +73,10 @@ func (h *userHandler) UpdateUser(c *fiber.Ctx) error {
 	var req createUserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+	}
+
+	if err := validators.ValidateStruct(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	user := &service.UserUpdater{

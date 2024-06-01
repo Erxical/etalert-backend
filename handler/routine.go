@@ -2,7 +2,9 @@ package handler
 
 import (
 	"etalert-backend/service"
+	"etalert-backend/validators"
 	"github.com/gofiber/fiber/v2"
+	"net/http"
 )
 
 type RoutineHandler struct {
@@ -10,9 +12,9 @@ type RoutineHandler struct {
 }
 
 type createRoutineRequest struct {
-	GoogleId string `json:"googleId"`
-	Name     string `json:"name"`
-	Duration int    `json:"duration"`
+	GoogleId string `json:"googleId" validate:"required"`
+	Name     string `json:"name" validate:"required"`
+	Duration int    `json:"duration" validate:"required"`
 	Order    int    `json:"order"`
 }
 
@@ -28,6 +30,10 @@ func (h *RoutineHandler) CreateRoutine(c *fiber.Ctx) error {
 	var req createRoutineRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+	}
+
+	if err := validators.ValidateStruct(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	routine := &service.RoutineInput{
@@ -63,6 +69,10 @@ func (h *RoutineHandler) UpdateRoutine(c *fiber.Ctx) error {
 	var req createRoutineRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+	}
+
+	if err := validators.ValidateStruct(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	routine := &service.RoutineResponse{
