@@ -20,6 +20,7 @@ type createUserRequest struct {
 
 type createUserResponse struct {
 	Message string `json:"message"`
+	IsExist bool   `json:"isExist"`
 }
 
 func NewUserHandler(userService service.UserService) *userHandler {
@@ -43,15 +44,21 @@ func (h *userHandler) CreateUser(c *fiber.Ctx) error {
 		GoogleId: req.GoogleId,
 	}
 
-	err := h.usersrv.InsertUser(user)
+	insertResponse, err := h.usersrv.InsertUser(user)
 	if err != nil {
 		if err == service.ErrUserAlreadyExists {
-			return c.Status(http.StatusConflict).JSON(fiber.Map{"error": "User with the same GoogleId already exists"})
+			return c.Status(http.StatusConflict).JSON(createUserResponse{
+				Message: "User already exists",
+				IsExist: true,
+			})
 		}
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to insert user"})
 	}
 
-	return c.Status(http.StatusCreated).JSON(createUserResponse{Message: "User created successfully"})
+	return c.Status(http.StatusCreated).JSON(createUserResponse{
+		Message: "User created successfully",
+		IsExist: insertResponse.IsExist,
+	})
 }
 
 func (h *userHandler) GetUserInfo(c *fiber.Ctx) error {

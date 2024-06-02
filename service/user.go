@@ -19,7 +19,7 @@ type UserInfoResponse struct {
 }
 
 type UserService interface {
-	InsertUser(user *UserInput) error
+	InsertUser(user *UserInput) (*InsertUserResponse, error)
 	GetUserInfo(string) (*UserInfoResponse, error)
 	UpdateUser(string, *UserUpdater) error
 }
