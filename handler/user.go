@@ -47,7 +47,7 @@ func (h *userHandler) CreateUser(c *fiber.Ctx) error {
 	insertResponse, err := h.usersrv.InsertUser(user)
 	if err != nil {
 		if err == service.ErrUserAlreadyExists {
-			return c.Status(http.StatusConflict).JSON(createUserResponse{
+			return c.Status(http.StatusAlreadyReported).JSON(createUserResponse{
 				Message: "User already exists",
 				IsExist: true,
 			})
