@@ -18,6 +18,11 @@ type createUserRequest struct {
 	GoogleId string `json:"googleId" validate:"required"`
 }
 
+type updateUserRequest struct {
+	Name  string `json:"name" validate:"required"`
+	Image string `json:"image" validate:"required"`
+}
+
 type createUserResponse struct {
 	Message string `json:"message"`
 	IsExist bool   `json:"isExist"`
@@ -77,7 +82,7 @@ func (h *userHandler) GetUserInfo(c *fiber.Ctx) error {
 
 func (h *userHandler) UpdateUser(c *fiber.Ctx) error {
 	googleId := c.Params("googleId")
-	var req createUserRequest
+	var req updateUserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
 	}
