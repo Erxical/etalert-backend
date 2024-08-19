@@ -2,6 +2,7 @@ package handler
 
 import (
 	"etalert-backend/service"
+	"etalert-backend/validators"
 	"github.com/gofiber/fiber/v2"
 	"net/http"
 )
@@ -11,14 +12,20 @@ type userHandler struct {
 }
 
 type createUserRequest struct {
-	Name     string `json:"name"`
-	Image    string `json:"image"`
-	Email    string `json:"email"`
-	GoogleId string `json:"googleId"`
+	Name     string `json:"name" validate:"required"`
+	Image    string `json:"image" validate:"required"`
+	Email    string `json:"email" validate:"required"`
+	GoogleId string `json:"googleId" validate:"required"`
+}
+
+type updateUserRequest struct {
+	Name  string `json:"name" validate:"required"`
+	Image string `json:"image" validate:"required"`
 }
 
 type createUserResponse struct {
 	Message string `json:"message"`
+	IsExist bool   `json:"isExist"`
 }
 
 func NewUserHandler(userService service.UserService) *userHandler {
@@ -31,6 +38,10 @@ func (h *userHandler) CreateUser(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
 	}
 
+	if err := validators.ValidateStruct(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	user := &service.UserInput{
 		Name:     req.Name,
 		Image:    req.Image,
@@ -38,15 +49,21 @@ func (h *userHandler) CreateUser(c *fiber.Ctx) error {
 		GoogleId: req.GoogleId,
 	}
 
-	err := h.usersrv.InsertUser(user)
+	insertResponse, err := h.usersrv.InsertUser(user)
 	if err != nil {
 		if err == service.ErrUserAlreadyExists {
-			return c.Status(http.StatusConflict).JSON(fiber.Map{"error": "User with the same GoogleId already exists"})
+			return c.Status(http.StatusAlreadyReported).JSON(createUserResponse{
+				Message: "User already exists",
+				IsExist: true,
+			})
 		}
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to insert user"})
 	}
 
-	return c.Status(http.StatusCreated).JSON(createUserResponse{Message: "User created successfully"})
+	return c.Status(http.StatusCreated).JSON(createUserResponse{
+		Message: "User created successfully",
+		IsExist: insertResponse.IsExist,
+	})
 }
 
 func (h *userHandler) GetUserInfo(c *fiber.Ctx) error {
@@ -65,9 +82,13 @@ func (h *userHandler) GetUserInfo(c *fiber.Ctx) error {
 
 func (h *userHandler) UpdateUser(c *fiber.Ctx) error {
 	googleId := c.Params("googleId")
-	var req createUserRequest
+	var req updateUserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+	}
+
+	if err := validators.ValidateStruct(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	user := &service.UserUpdater{

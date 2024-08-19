@@ -1,12 +1,10 @@
 package service
 
 type UserInput struct {
-	GoogleId  string `bson:"googleId"`
-	Email     string `bson:"email"`
-	Name      string `bson:"name"`
-	Image     string `bson:"image"`
-	SleepTime string `bson:"sleepTime"`
-	WakeTime  string `bson:"wakeTime"`
+	GoogleId string `bson:"googleId"`
+	Email    string `bson:"email"`
+	Name     string `bson:"name"`
+	Image    string `bson:"image"`
 }
 
 type UserUpdater struct {
@@ -21,7 +19,7 @@ type UserInfoResponse struct {
 }
 
 type UserService interface {
-	InsertUser(user *UserInput) error
+	InsertUser(user *UserInput) (*InsertUserResponse, error)
 	GetUserInfo(string) (*UserInfoResponse, error)
 	UpdateUser(string, *UserUpdater) error
 }

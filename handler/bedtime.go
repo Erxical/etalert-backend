@@ -2,6 +2,7 @@ package handler
 
 import (
 	"etalert-backend/service"
+	"etalert-backend/validators"
 	"github.com/gofiber/fiber/v2"
 	"net/http"
 )
@@ -11,14 +12,14 @@ type bedtimeHandler struct {
 }
 
 type createBedtimeRequest struct {
-	GoogleId  string `json:"googleId"`
-	SleepTime string `json:"sleepTime"`
-	WakeTime  string `json:"wakeTime"`
+	GoogleId  string `json:"googleId" validate:"required"`
+	SleepTime string `json:"sleepTime" validate:"required"`
+	WakeTime  string `json:"wakeTime" validate:"required"`
 }
 
 type updateBedtimeRequest struct {
-	SleepTime string `json:"sleepTime"`
-	WakeTime  string `json:"wakeTime"`
+	SleepTime string `json:"sleepTime" validate:"required"`
+	WakeTime  string `json:"wakeTime" validate:"required"`
 }
 
 type createBedtimeResponse struct {
@@ -33,6 +34,10 @@ func (h *bedtimeHandler) CreateBedtime(c *fiber.Ctx) error {
 	var req createBedtimeRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+	}
+
+	if err := validators.ValidateStruct(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	bedtime := &service.BedtimeInput{
@@ -72,6 +77,10 @@ func (h *bedtimeHandler) UpdateBedtime(c *fiber.Ctx) error {
 	var req updateBedtimeRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+	}
+
+	if err := validators.ValidateStruct(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	bedtime := &service.BedtimeResponse{
