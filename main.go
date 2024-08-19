@@ -50,6 +50,7 @@ func main() {
 	server := fiber.New()
 
 	server.Post("/login", authHandler.Login)
+	server.Post("/refresh-token", authHandler.RefreshToken)
 	server.Post("/users", userHandler.CreateUser)
 	server.Patch("/users/:googleId", userHandler.UpdateUser)
 	server.Get("/users/info/:googleId", userHandler.GetUserInfo)

@@ -2,14 +2,17 @@ package service
 
 type LoginInput struct {
 	GoogleId string `bson:"googleId"`
-	// Expired  string `bson:"expired"`
 }
 
 type LoginResponse struct {
-	Token string `bson:"token"`
-	Expired string `bson:"expired"`
+	AccessToken  string `bson:"accessToken"`
+	RefreshToken string `bson:"refreshToken"`
+	AccessTokenExpired      string `bson:"expired"`
+	RefreshTokenExpired      string `bson:"expired"`
 }
+
 
 type AuthService interface {
 	Login(loginInput *LoginInput) (LoginResponse, error)
+	RefreshToken(refreshToken string) (LoginResponse, error)
 }
