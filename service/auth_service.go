@@ -28,8 +28,11 @@ func (s authService) Login(loginInput *LoginInput) (LoginResponse, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	t, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	exp := time.Now().Add(time.Hour * 24).Unix()
+	expTime := time.Unix(exp, 0)
+	readableTime := expTime.Format(time.RFC3339)
 	if err != nil {
 		return LoginResponse{}, err
 	}
-	return LoginResponse{Token: t}, nil
+	return LoginResponse{Token: t, Expired: readableTime}, nil
 }

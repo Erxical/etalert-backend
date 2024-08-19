@@ -60,6 +60,6 @@ func main() {
 	server.Patch("/users/routines/:googleId", routineHandler.UpdateRoutine)
 	server.Get("/users/routines/info/:googleId", routineHandler.GetRoutineInfo)
 
-	// listen to port 8000
+	// listen to port 3000
 	log.Fatal(server.Listen("localhost:3000"))
 }
