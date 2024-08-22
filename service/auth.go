@@ -5,10 +5,10 @@ type LoginInput struct {
 }
 
 type LoginResponse struct {
-	AccessToken  string `bson:"accessToken"`
-	RefreshToken string `bson:"refreshToken"`
-	AccessTokenExpired      string `bson:"expired"`
-	RefreshTokenExpired      string `bson:"expired"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken,omitempty"`
+	AccessTokenExpired      string `json:"expired"`
+	RefreshTokenExpired      string `json:"refreshExpired,omitempty"`
 }
 
 

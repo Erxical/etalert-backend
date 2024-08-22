@@ -2,9 +2,10 @@ package service
 
 import (
 	"etalert-backend/repository"
-	"github.com/golang-jwt/jwt/v5"
 	"os"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type authService struct {
@@ -21,34 +22,44 @@ func (s authService) Login(loginInput *LoginInput) (LoginResponse, error) {
 		return LoginResponse{}, err
 	}
 
-	acExp := time.Hour * 1
-	accessToken, err := s.generateToken(userRepo.GoogleId, acExp) // 1 hour expiration for access token
-	acExpTime := time.Now().Add(acExp).Unix()
-	acExpTimeUnix := time.Unix(acExpTime, 0)
-	acReadableTime := acExpTimeUnix.Format(time.RFC3339)
+	accessToken, refreshToken, accessTokenExpire, refreshTokenExpire, err := s.generateToken(userRepo.GoogleId)
 	if err != nil {
 		return LoginResponse{}, err
 	}
-
-	rfExp := time.Hour * 24 * 7
-	refreshToken, err := s.generateToken(userRepo.GoogleId, rfExp) // 7 days expiration for refresh token
-	rfExpTime := time.Now().Add(rfExp).Unix()
-	rfExpTimeUnix := time.Unix(rfExpTime, 0)
-	rfReadableTime := rfExpTimeUnix.Format(time.RFC3339)
-	if err != nil {
-		return LoginResponse{}, err
-	}
-
-	return LoginResponse{AccessToken: accessToken, RefreshToken: refreshToken, AccessTokenExpired: acReadableTime, RefreshTokenExpired: rfReadableTime}, nil
+	return LoginResponse{AccessToken: accessToken, RefreshToken: refreshToken, AccessTokenExpired: accessTokenExpire, RefreshTokenExpired: refreshTokenExpire}, nil
 }
 
-func (s *authService) generateToken(googleId string, expiresIn time.Duration) (string, error) {
-	claims := jwt.MapClaims{
+func (s *authService) generateToken(googleId string) (string, string, string, string, error) {
+	accessExpire := time.Hour * 24
+	acExpTime := time.Now().Add(accessExpire).Unix()
+	acExpTimeUnix := time.Unix(acExpTime, 0)
+	acReadableTime := acExpTimeUnix.Format(time.RFC3339)
+	aClaims := jwt.MapClaims{
 		"googleId": googleId,
-		"exp":      time.Now().Add(expiresIn).Unix(),
+		"exp":      time.Now().Add(accessExpire).Unix(),
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	refreshExpire := time.Hour * 24 * 7
+	rfExpTime := time.Now().Add(refreshExpire).Unix()
+	rfExpTimeUnix := time.Unix(rfExpTime, 0)
+	rfReadableTime := rfExpTimeUnix.Format(time.RFC3339)
+	rClaims := jwt.MapClaims{
+		"googleId": googleId,
+		"exp":      time.Now().Add(refreshExpire).Unix(),
+	}
+
+	aToken := jwt.NewWithClaims(jwt.SigningMethodHS256, aClaims)
+	aTokenString, err := aToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		return "", "", "", "", err
+	}
+
+	rToken := jwt.NewWithClaims(jwt.SigningMethodHS256, rClaims)
+	rTokenString, err := rToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		return "", "", "", "", err
+	}
+
+	return aTokenString, rTokenString, acReadableTime, rfReadableTime, nil
 }
 
 func (s *authService) RefreshToken(refreshToken string) (LoginResponse, error) {
@@ -70,10 +81,10 @@ func (s *authService) RefreshToken(refreshToken string) (LoginResponse, error) {
 	}
 
 	// Generate new access token
-	newAccessToken, err := s.generateToken(googleId, time.Hour*1)
+	accessToken, _, accessTokenExpire, _, err := s.generateToken(googleId)
 	if err != nil {
 		return LoginResponse{}, err
 	}
 
-	return LoginResponse{AccessToken: newAccessToken}, nil
+	return LoginResponse{AccessToken: accessToken, AccessTokenExpired: accessTokenExpire}, nil
 }

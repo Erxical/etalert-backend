@@ -2,8 +2,10 @@ package handler
 
 import (
 	"etalert-backend/service"
-	"github.com/gofiber/fiber/v2"
 	"net/http"
+	"strings"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 type authHandler struct {
@@ -29,17 +31,25 @@ func (h *authHandler) Login(c *fiber.Ctx) error {
 }
 
 func (h *authHandler) RefreshToken(c *fiber.Ctx) error {
-	var req struct {
-		RefreshToken string `json:"refreshToken"`
-	}
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
-	}
+    authHeader := c.Get("Authorization")
+    if authHeader == "" {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Missing refresh token"})
+    }
 
-	refreshResponse, err := h.authsrv.RefreshToken(req.RefreshToken)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid refresh token"})
-	}
+    // Expecting "Bearer <token>", so split by space and take the second part
+    parts := strings.Split(authHeader, " ")
+    if len(parts) != 2 || parts[0] != "Bearer" {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid authorization header format"})
+    }
 
-	return c.Status(http.StatusOK).JSON(refreshResponse)
+    refreshToken := parts[1]
+
+    refreshResponse, err := h.authsrv.RefreshToken(refreshToken)
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid refresh token"})
+    }
+
+    return c.Status(http.StatusOK).JSON(refreshResponse)
 }
+
+
