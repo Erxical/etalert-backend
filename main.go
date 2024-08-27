@@ -52,11 +52,11 @@ func main() {
 
 	server.Post("/login", authHandler.Login)
 	server.Post("/refresh-token", authHandler.RefreshToken)
+    server.Post("/users", userHandler.CreateUser)
 
 	protected := server.Group("/users", middlewares.ValidateSession(authService))
 
     // Protected routes
-    protected.Post("/", userHandler.CreateUser)
     protected.Patch("/:googleId", userHandler.UpdateUser)
     protected.Get("/info/:googleId", userHandler.GetUserInfo)
     protected.Post("/bedtimes", bedtimeHandler.CreateBedtime)
