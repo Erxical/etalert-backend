@@ -31,10 +31,13 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("Connected to MongoDB!")
-
+	
 	userRepository := repository.NewUserRepositoryDB(client, "etalert", "user")
 	userService := service.NewUserService(userRepository)
 	userHandler := handler.NewUserHandler(userService)
+	
+	authService := service.NewAuthService(userRepository)
+	authHandler := handler.NewAuthHandler(authService)
 
 	bedtimeRepository := repository.NewBedtimeRepositoryDB(client, "etalert", "bedtime")
 	bedtimeService := service.NewBedtimeService(bedtimeRepository)
@@ -44,8 +47,9 @@ func main() {
 	routineService := service.NewRoutineService(routineRepository)
 	routineHandler := handler.NewRoutineHandler(routineService)
 
-	authService := service.NewAuthService(userRepository)
-	authHandler := handler.NewAuthHandler(authService)
+	scheduleRepository := repository.NewScheduleRepositoryDB(client, "etalert", "schedule")
+	scheduleService := service.NewScheduleService(scheduleRepository)
+	scheduleHandler := handler.NewScheduleHandler(scheduleService)
 
 	// initialize new instance of fiber
 	server := fiber.New()
@@ -57,14 +61,22 @@ func main() {
 	protected := server.Group("/users", middlewares.ValidateSession(authService))
 
     // Protected routes
+	//User routes
     protected.Patch("/:googleId", userHandler.UpdateUser)
     protected.Get("/info/:googleId", userHandler.GetUserInfo)
+
+	//Bedtime routes
     protected.Post("/bedtimes", bedtimeHandler.CreateBedtime)
     protected.Patch("/bedtimes/:googleId", bedtimeHandler.UpdateBedtime)
     protected.Get("/bedtimes/info/:googleId", bedtimeHandler.GetBedtimeInfo)
+
+	//Routine routes
     protected.Post("/routines", routineHandler.CreateRoutine)
     protected.Patch("/routines/edit/:googleId", routineHandler.UpdateRoutine)
     protected.Get("/routines/:googleId", routineHandler.GetAllRoutines)
+
+	//Schedule routes
+	protected.Post("/schedules", scheduleHandler.CreateSchedule)
 
 	// listen to port 3000
 	log.Fatal(server.Listen("localhost:3000"))
