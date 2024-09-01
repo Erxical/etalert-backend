@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -37,16 +38,36 @@ func (r *routineRepositoryDB) InsertRoutine(routine *Routine) error {
 	return err
 }
 
-func (r *routineRepositoryDB) GetRoutine(gId string) (*Routine, error) {
-	ctx := context.Background()
-	var routine Routine
-	filter := bson.M{"googleId": gId}
-	err := r.collection.FindOne(ctx, filter).Decode(&routine)
-	if err != nil {
-		return nil, err
-	}
-	return &routine, nil
+func (r *routineRepositoryDB) GetAllRoutines(gId string) ([]*Routine, error) {
+    ctx := context.Background()
+    var routines []*Routine
+    filter := bson.M{"googleId": gId}
 
+    // Use Find to get all matching documents
+    cursor, err := r.collection.Find(ctx, filter)
+    if err != nil {
+        return nil, err
+    }
+    // Ensure the cursor is closed once we're done
+    defer cursor.Close(ctx)
+
+    // Iterate through the cursor
+    for cursor.Next(ctx) {
+        var routine Routine
+        // Decode each document into a Routine struct
+        if err := cursor.Decode(&routine); err != nil {
+            return nil, err
+        }
+        // Append the decoded routine to the slice
+        routines = append(routines, &routine)
+    }
+
+    // Check if any errors occurred during iteration
+    if err := cursor.Err(); err != nil {
+        return nil, err
+    }
+
+    return routines, nil
 }
 
 func (r *routineRepositoryDB) UpdateRoutine(gId string, routine *Routine) error {

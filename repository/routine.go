@@ -10,6 +10,6 @@ type Routine struct {
 type RoutineRepository interface {
 	GetHighestOrder(string) (int, error)
 	InsertRoutine(routine *Routine) error
-	GetRoutine(string) (*Routine, error)
+	GetAllRoutines(string) ([]*Routine, error)
 	UpdateRoutine(string, *Routine) error
 }

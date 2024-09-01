@@ -15,6 +15,6 @@ type RoutineResponse struct {
 
 type RoutineService interface {
 	InsertRoutine(routine *RoutineInput) error
-	GetRoutine(string) (*RoutineResponse, error)
+	GetAllRoutines(string) ([]*RoutineResponse, error)
 	UpdateRoutine(string, *RoutineResponse) error
 }

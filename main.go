@@ -52,7 +52,7 @@ func main() {
 
 	server.Post("/login", authHandler.Login)
 	server.Post("/refresh-token", authHandler.RefreshToken)
-    server.Post("/users", userHandler.CreateUser)
+    server.Post("/create-user", userHandler.CreateUser)
 
 	protected := server.Group("/users", middlewares.ValidateSession(authService))
 
@@ -63,8 +63,8 @@ func main() {
     protected.Patch("/bedtimes/:googleId", bedtimeHandler.UpdateBedtime)
     protected.Get("/bedtimes/info/:googleId", bedtimeHandler.GetBedtimeInfo)
     protected.Post("/routines", routineHandler.CreateRoutine)
-    protected.Patch("/routines/:googleId", routineHandler.UpdateRoutine)
-    protected.Get("/routines/info/:googleId", routineHandler.GetRoutineInfo)
+    protected.Patch("/routines/edit/:googleId", routineHandler.UpdateRoutine)
+    protected.Get("/routines/:googleId", routineHandler.GetAllRoutines)
 
 	// listen to port 3000
 	log.Fatal(server.Listen("localhost:3000"))

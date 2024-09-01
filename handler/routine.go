@@ -51,10 +51,10 @@ func (h *RoutineHandler) CreateRoutine(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(createRoutineResponse{Message: "Routine created successfully"})
 }
 
-func (h *RoutineHandler) GetRoutineInfo(c *fiber.Ctx) error {
+func (h *RoutineHandler) GetAllRoutines(c *fiber.Ctx) error {
 	googleId := c.Params("googleId")
 
-	routine, err := h.routinesrv.GetRoutine(googleId)
+	routine, err := h.routinesrv.GetAllRoutines(googleId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get routine"})
 	}
