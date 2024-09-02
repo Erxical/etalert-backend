@@ -17,4 +17,5 @@ type ScheduleRepository interface {
 	GetFirstSchedule(string, string) (string, error)
 	GetTravelTime(string, string, string, string, string) (string, error)
 	InsertSchedule(schedule *Schedule) error
+	GetAllSchedules(string, string) ([]*Schedule, error)
 }

@@ -99,3 +99,31 @@ func (s *scheduleRepositoryDB) InsertSchedule(schedule *Schedule) error {
 	_, err := s.collection.InsertOne(ctx, schedule)
 	return err
 }
+
+func (r *scheduleRepositoryDB) GetAllSchedules(gId string, date string) ([]*Schedule, error) {
+    ctx := context.Background()
+    var schedules []*Schedule
+    filter := bson.M{"googleId": gId, "date": date}
+
+    cursor, err := r.collection.Find(ctx, filter)
+    if err != nil {
+        return nil, err
+    }
+    defer cursor.Close(ctx)
+
+    for cursor.Next(ctx) {
+        var schedule Schedule
+        if err := cursor.Decode(&schedule); err != nil {
+            return nil, err
+        }
+        // Append the decoded routine to the slice
+        schedules = append(schedules, &schedule)
+    }
+
+    // Check if any errors occurred during iteration
+    if err := cursor.Err(); err != nil {
+        return nil, err
+    }
+
+    return schedules, nil
+}

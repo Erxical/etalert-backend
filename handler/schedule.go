@@ -13,19 +13,19 @@ type ScheduleHandler struct {
 }
 
 type createScheduleRequest struct {
-	GoogleId string `json:"googleId" validate:"required"`
-	Name     string `json:"name" validate:"required"`
-	Date     string `json:"date" validate:"required"`
-	StartTime string `json:"startTime" validate:"required"`
-	EndTime string `json:"endTime"`
-	IsHaveEndTime bool `json:"isHaveEndTime" validate:"required"`
-	OriLatitude float64 `json:"oriLatitude"`
-	OriLongitude float64 `json:"oriLongitude"`
-	DestLatitude float64 `json:"destLatitude"`
-	DestLongitude float64 `json:"destLongitude"`
-	IsHaveLocation bool `json:"isHaveLocation" validate:"required"`
-	IsFirstSchedule bool `json:"isFirstSchedule" validate:"required"`
-	DepartTime string `json:"departTime"`
+	GoogleId        string  `json:"googleId" validate:"required"`
+	Name            string  `json:"name" validate:"required"`
+	Date            string  `json:"date" validate:"required"`
+	StartTime       string  `json:"startTime" validate:"required"`
+	EndTime         string  `json:"endTime"`
+	IsHaveEndTime   bool    `json:"isHaveEndTime" validate:"required"`
+	OriLatitude     float64 `json:"oriLatitude"`
+	OriLongitude    float64 `json:"oriLongitude"`
+	DestLatitude    float64 `json:"destLatitude"`
+	DestLongitude   float64 `json:"destLongitude"`
+	IsHaveLocation  bool    `json:"isHaveLocation" validate:"required"`
+	IsFirstSchedule bool    `json:"isFirstSchedule" validate:"required"`
+	DepartTime      string  `json:"departTime"`
 }
 
 type createScheduleResponse struct {
@@ -47,19 +47,19 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 	}
 
 	schedule := &service.ScheduleInput{
-		GoogleId: req.GoogleId,
-		Name:     req.Name,
-		Date:     req.Date,
-		StartTime: req.StartTime,
-		EndTime: req.EndTime,
-		IsHaveEndTime: req.IsHaveEndTime,
-		OriLatitude: req.OriLatitude,
-		OriLongitude: req.OriLongitude,
-		DestLatitude: req.DestLatitude,
-		DestLongitude: req.DestLongitude,
-		IsHaveLocation: req.IsHaveLocation,
+		GoogleId:        req.GoogleId,
+		Name:            req.Name,
+		Date:            req.Date,
+		StartTime:       req.StartTime,
+		EndTime:         req.EndTime,
+		IsHaveEndTime:   req.IsHaveEndTime,
+		OriLatitude:     req.OriLatitude,
+		OriLongitude:    req.OriLongitude,
+		DestLatitude:    req.DestLatitude,
+		DestLongitude:   req.DestLongitude,
+		IsHaveLocation:  req.IsHaveLocation,
 		IsFirstSchedule: req.IsFirstSchedule,
-		DepartTime: req.DepartTime,
+		DepartTime:      req.DepartTime,
 	}
 
 	err := h.schedulesrv.InsertSchedule(schedule)
@@ -68,4 +68,18 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(createScheduleResponse{Message: "Schedule created successfully"})
+}
+
+func (h *ScheduleHandler) GetAllSchedules(c *fiber.Ctx) error {
+	googleId := c.Params("googleId")
+	date := c.Params("date")
+
+	schedule, err := h.schedulesrv.GetAllSchedules(googleId, date)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get routine"})
+	}
+	if schedule == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Routine not found"})
+	}
+	return c.JSON(schedule)
 }

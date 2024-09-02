@@ -160,3 +160,31 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 
 	return nil
 }
+
+func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error) {
+    schedules, err := s.scheduleRepo.GetAllSchedules(gId, date)
+    if err != nil {
+        return nil, err
+    }
+
+    var scheduleResponses []*ScheduleResponse
+
+    for _, schedule := range schedules {
+        scheduleResponses = append(scheduleResponses, &ScheduleResponse{
+            Name: 		  schedule.Name,
+			StartTime:    schedule.StartTime,
+			EndTime:      schedule.EndTime,
+			IsHaveEndTime: schedule.IsHaveEndTime,
+			Latitude:     schedule.Latitude,
+			Longitude:    schedule.Longitude,
+			IsHaveLocation: schedule.IsHaveLocation,
+			IsFirstSchedule: schedule.IsFirstSchedule,
+        })
+    }
+
+	for i, j := 0, len(scheduleResponses)-1; i < j; i, j = i+1, j-1 {
+		scheduleResponses[i], scheduleResponses[j] = scheduleResponses[j], scheduleResponses[i]
+	}
+
+    return scheduleResponses, nil
+}
