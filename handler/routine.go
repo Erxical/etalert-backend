@@ -15,7 +15,7 @@ type createRoutineRequest struct {
 	GoogleId string `json:"googleId" validate:"required"`
 	Name     string `json:"name" validate:"required"`
 	Duration int    `json:"duration" validate:"required"`
-	Order    int    `json:"order"`
+	Order    int    `json:"order" validate:"required"`
 }
 
 type createRoutineResponse struct {

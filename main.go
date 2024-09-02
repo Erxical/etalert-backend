@@ -48,7 +48,7 @@ func main() {
 	routineHandler := handler.NewRoutineHandler(routineService)
 
 	scheduleRepository := repository.NewScheduleRepositoryDB(client, "etalert", "schedule")
-	scheduleService := service.NewScheduleService(scheduleRepository)
+	scheduleService := service.NewScheduleService(scheduleRepository, routineRepository)
 	scheduleHandler := handler.NewScheduleHandler(scheduleService)
 
 	// initialize new instance of fiber

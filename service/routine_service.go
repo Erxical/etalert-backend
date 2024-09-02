@@ -14,13 +14,6 @@ func NewRoutineService(routineRepo repository.RoutineRepository) RoutineService 
 
 func (s routineService) InsertRoutine(routine *RoutineInput) error {
 
-	// highestOrder, err := s.routineRepo.GetHighestOrder(routine.GoogleId)
-	// if err != nil {
-	// 	return err
-	// }
-	// // Increment the order number for the new routine
-	// newOrder := highestOrder + 1
-
 	err := s.routineRepo.InsertRoutine(&repository.Routine{
 		GoogleId: routine.GoogleId,
 		Name:     routine.Name,

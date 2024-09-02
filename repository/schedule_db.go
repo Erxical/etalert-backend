@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	// "go.mongodb.org/mongo-driver/bson"
+	
+	"go.mongodb.org/mongo-driver/bson"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
-	// "go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type scheduleRepositoryDB struct {
@@ -71,6 +71,27 @@ func (s *scheduleRepositoryDB) GetTravelTime(oriLat string, oriLong string, dest
 
 	// Return the duration text
 	return element.Duration.Text, nil
+}
+
+func (s *scheduleRepositoryDB) GetFirstSchedule(googleId string, date string) (string, error) {
+	ctx := context.Background()
+	var schedule Schedule
+
+	// Define filter to match the date and Google ID
+	filter := bson.M{"googleId": googleId, "date": date}
+
+	// Find the first schedule of the day sorted by StartTime
+	opts := options.FindOne().SetSort(bson.D{{Key: "startTime", Value: 1}}) // Sort by startTime in ascending order
+
+	err := s.collection.FindOne(ctx, filter, opts).Decode(&schedule)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return "", fmt.Errorf("no schedules found for the given date")
+		}
+		return "", fmt.Errorf("failed to retrieve first schedule: %v", err)
+	}
+
+	return schedule.StartTime, nil
 }
 
 func (s *scheduleRepositoryDB) InsertSchedule(schedule *Schedule) error {

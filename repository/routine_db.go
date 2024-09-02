@@ -5,7 +5,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type routineRepositoryDB struct {
@@ -15,21 +14,6 @@ type routineRepositoryDB struct {
 func NewRoutineRepositoryDB(client *mongo.Client, dbName string, collName string) RoutineRepository {
 	collection := client.Database(dbName).Collection(collName)
 	return &routineRepositoryDB{collection: collection}
-}
-
-func (r *routineRepositoryDB) GetHighestOrder(gId string) (int, error) {
-	ctx := context.Background()
-	filter := bson.M{"googleId": gId}
-	opts := options.FindOne().SetSort(bson.M{"order": -1})
-	var routine Routine
-	err := r.collection.FindOne(ctx, filter, opts).Decode(&routine)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return 0, nil
-		}
-		return 0, err
-	}
-	return routine.Order, nil
 }
 
 func (r *routineRepositoryDB) InsertRoutine(routine *Routine) error {
