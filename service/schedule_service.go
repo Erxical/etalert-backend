@@ -44,7 +44,7 @@ func parseDuration(durationText string) (time.Duration, error) {
 	}
 
 	// Return total duration in minutes
-	return time.Duration(totalMinutes) * time.Minute, nil
+	return time.Duration(totalMinutes+15) * time.Minute, nil
 }
 
 func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
@@ -94,18 +94,16 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse travel duration: %v", err)
 	}
-	fmt.Println(travelDuration)
 
 	leaveTime := startTime.Add(-travelDuration).Format("15:04")
-	fmt.Println(leaveTime)
 	leaveSchedule := &repository.Schedule{
-		GoogleId:       schedule.GoogleId,
-		Name:           "Leave Home At",
-		Date:           schedule.Date, 
-		StartTime:      leaveTime,
-		EndTime:        "",
-		IsHaveEndTime:  false,
-		IsHaveLocation: false,
+		GoogleId:        schedule.GoogleId,
+		Name:            "Leave Home At",
+		Date:            schedule.Date,
+		StartTime:       leaveTime,
+		EndTime:         "",
+		IsHaveEndTime:   false,
+		IsHaveLocation:  false,
 		IsFirstSchedule: false,
 	}
 

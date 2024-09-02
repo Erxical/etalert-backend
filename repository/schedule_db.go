@@ -70,7 +70,6 @@ func (s *scheduleRepositoryDB) GetTravelTime(oriLat string, oriLong string, dest
 	}
 
 	// Return the duration text
-	fmt.Println(element.Duration.Text)
 	return element.Duration.Text, nil
 }
 
