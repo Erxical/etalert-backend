@@ -8,9 +8,10 @@ import (
 	"net/http"
 	"os"
 	"time"
-	
-	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -100,30 +101,70 @@ func (s *scheduleRepositoryDB) InsertSchedule(schedule *Schedule) error {
 	return err
 }
 
-func (r *scheduleRepositoryDB) GetAllSchedules(gId string, date string) ([]*Schedule, error) {
-    ctx := context.Background()
-    var schedules []*Schedule
-    filter := bson.M{"googleId": gId, "date": date}
+func (s *scheduleRepositoryDB) GetAllSchedules(gId string, date string) ([]*Schedule, error) {
+	ctx := context.Background()
+	var schedules []*Schedule
+	filter := bson.M{"googleId": gId, "date": date}
 
-    cursor, err := r.collection.Find(ctx, filter)
-    if err != nil {
-        return nil, err
-    }
-    defer cursor.Close(ctx)
+	cursor, err := s.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
 
-    for cursor.Next(ctx) {
-        var schedule Schedule
-        if err := cursor.Decode(&schedule); err != nil {
-            return nil, err
-        }
-        // Append the decoded routine to the slice
-        schedules = append(schedules, &schedule)
-    }
+	for cursor.Next(ctx) {
+		var schedule Schedule
+		if err := cursor.Decode(&schedule); err != nil {
+			return nil, err
+		}
+		// Append the decoded routine to the slice
+		schedules = append(schedules, &schedule)
+	}
 
-    // Check if any errors occurred during iteration
-    if err := cursor.Err(); err != nil {
-        return nil, err
-    }
+	// Check if any errors occurred during iteration
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
 
-    return schedules, nil
+	return schedules, nil
+}
+
+func (s *scheduleRepositoryDB) GetScheduleById(id string) (*Schedule, error) {
+	ctx := context.Background()
+	var schedule Schedule
+
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert ID: %v", err)
+	}
+	filter := bson.M{"_id": objectId}
+
+	err = s.collection.FindOne(ctx, filter).Decode(&schedule)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve schedule: %v", err)
+	}
+
+	return &schedule, nil
+}
+
+func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) error {
+	ctx := context.Background()
+
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return fmt.Errorf("failed to convert ID: %v", err)
+	}
+	filter := bson.M{"_id": (objectId)}
+
+	update := bson.M{"$set": bson.M{
+		"name":          schedule.Name,
+		"date":          schedule.Date,
+		"startTime":     schedule.StartTime,
+		"endTime":       schedule.EndTime,
+		"isHaveEndTime": schedule.IsHaveEndTime,
+	},
+	}
+
+	_, err = s.collection.UpdateOne(ctx, filter, update)
+	return err
 }

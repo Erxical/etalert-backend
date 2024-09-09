@@ -78,6 +78,8 @@ func main() {
 	//Schedule routes
 	protected.Post("/schedules", scheduleHandler.CreateSchedule)
 	protected.Get("/schedules/:googleId/:date", scheduleHandler.GetAllSchedules)
+	protected.Get("/schedules/:id", scheduleHandler.GetScheduleById)
+	protected.Patch("/schedules/:id", scheduleHandler.UpdateSchedule)
 
 	// listen to port 3000
 	log.Fatal(server.Listen("localhost:3000"))
