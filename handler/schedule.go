@@ -92,6 +92,19 @@ func (h *ScheduleHandler) GetAllSchedules(c *fiber.Ctx) error {
 	return c.JSON(schedule)
 }
 
+func (h *ScheduleHandler) GetScheduleById(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	schedule, err := h.schedulesrv.GetScheduleById(id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get schedule"})
+	}
+	if schedule == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Schedule not found"})
+	}
+	return c.JSON(schedule)
+}
+
 func (h *ScheduleHandler) UpdateSchedule(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var req updateScheduleRequest

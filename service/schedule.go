@@ -7,10 +7,10 @@ type ScheduleInput struct {
 	StartTime       string  `bson:"startTime"`
 	EndTime         string  `bson:"endTime"`
 	IsHaveEndTime   bool    `bson:"isHaveEndTime"`
-	OriLatitude     float64 `bson:"latitude"`
-	OriLongitude    float64 `bson:"longitude"`
-	DestLatitude    float64 `bson:"latitude"`
-	DestLongitude   float64 `bson:"longitude"`
+	OriLatitude     float64 `bson:"oriLatitude"`
+	OriLongitude    float64 `bson:"oriLongitude"`
+	DestLatitude    float64 `bson:"destLatitude"`
+	DestLongitude   float64 `bson:"destLongitude"`
 	IsHaveLocation  bool    `bson:"isHaveLocation"`
 	IsFirstSchedule bool    `bson:"isFirstSchedule"`
 	DepartTime      string  `bson:"departTime"`
@@ -39,5 +39,6 @@ type ScheduleUpdateInput struct {
 type ScheduleService interface {
 	InsertSchedule(schedule *ScheduleInput) error
 	GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error)
+	GetScheduleById(id string) (*ScheduleResponse, error)
 	UpdateSchedule(id string, schedule *ScheduleUpdateInput) error
 }

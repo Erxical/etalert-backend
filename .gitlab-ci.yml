@@ -1,0 +1,3 @@
+job-run-test:
+  script:
+    - echo "hello demo job run"

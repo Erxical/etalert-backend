@@ -129,6 +129,24 @@ func (s *scheduleRepositoryDB) GetAllSchedules(gId string, date string) ([]*Sche
 	return schedules, nil
 }
 
+func (s *scheduleRepositoryDB) GetScheduleById(id string) (*Schedule, error) {
+	ctx := context.Background()
+	var schedule Schedule
+
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert ID: %v", err)
+	}
+	filter := bson.M{"_id": objectId}
+
+	err = s.collection.FindOne(ctx, filter).Decode(&schedule)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve schedule: %v", err)
+	}
+
+	return &schedule, nil
+}
+
 func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) error {
 	ctx := context.Background()
 
@@ -138,7 +156,6 @@ func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) err
 	}
 	filter := bson.M{"_id": (objectId)}
 
-	// Define update to replace the existing schedule
 	update := bson.M{"$set": bson.M{
 		"name":          schedule.Name,
 		"date":          schedule.Date,
@@ -151,5 +168,3 @@ func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) err
 	_, err = s.collection.UpdateOne(ctx, filter, update)
 	return err
 }
-
-// {"_id":{"$oid":"66d592da997f1d43a5d0f2e9"}}

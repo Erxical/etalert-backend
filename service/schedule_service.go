@@ -56,8 +56,8 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 		StartTime:       schedule.StartTime,
 		EndTime:         schedule.EndTime,
 		IsHaveEndTime:   schedule.IsHaveEndTime,
-		Latitude:        schedule.DestLatitude,
-		Longitude:       schedule.DestLongitude,
+		DestLatitude:    schedule.DestLatitude,
+		DestLongitude:   schedule.DestLongitude,
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
 	})
@@ -176,8 +176,8 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 			StartTime:       schedule.StartTime,
 			EndTime:         schedule.EndTime,
 			IsHaveEndTime:   schedule.IsHaveEndTime,
-			Latitude:        schedule.Latitude,
-			Longitude:       schedule.Longitude,
+			Latitude:        schedule.DestLatitude,
+			Longitude:       schedule.DestLongitude,
 			IsHaveLocation:  schedule.IsHaveLocation,
 			IsFirstSchedule: schedule.IsFirstSchedule,
 		})
@@ -190,17 +190,114 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 	return scheduleResponses, nil
 }
 
+func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) {
+	schedule, err := s.scheduleRepo.GetScheduleById(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ScheduleResponse{
+		Id:              schedule.Id,
+		Name:            schedule.Name,
+		StartTime:       schedule.StartTime,
+		EndTime:         schedule.EndTime,
+		IsHaveEndTime:   schedule.IsHaveEndTime,
+		Latitude:        schedule.DestLatitude,
+		Longitude:       schedule.DestLongitude,
+		IsHaveLocation:  schedule.IsHaveLocation,
+		IsFirstSchedule: schedule.IsFirstSchedule,
+	}, nil
+}
+
 func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInput) error {
-	// idFormat := "{$oid:\"" + id + "\"}"
-	err := s.scheduleRepo.UpdateSchedule(id, &repository.Schedule{
+	currentSchedule, err := s.scheduleRepo.GetScheduleById(id)
+	if err != nil {
+		return fmt.Errorf("failed to fetch current schedule: %v", err)
+	}
+
+	updatedSchedule := &repository.Schedule{
 		Name:          schedule.Name,
 		Date:          schedule.Date,
 		StartTime:     schedule.StartTime,
 		EndTime:       schedule.EndTime,
 		IsHaveEndTime: schedule.IsHaveEndTime,
-	})
+	}
+
+	startTimeChanged := currentSchedule.StartTime != updatedSchedule.StartTime
+	if startTimeChanged && currentSchedule.IsHaveLocation {
+		// Recalculate travel time using the distance matrix API
+		travelTimeText, err := s.scheduleRepo.GetTravelTime(
+			fmt.Sprintf("%f", currentSchedule.OriLatitude),
+			fmt.Sprintf("%f", currentSchedule.OriLongitude),
+			fmt.Sprintf("%f", currentSchedule.DestLatitude),
+			fmt.Sprintf("%f", currentSchedule.DestLongitude),
+			"now", // Use appropriate departure time or set dynamically if needed
+		)
+		if err != nil {
+			return fmt.Errorf("failed to recalculate travel time: %v", err)
+		}
+
+		// Parse the recalculated travel time
+		travelDuration, err := parseDuration(travelTimeText)
+		if err != nil {
+			return fmt.Errorf("failed to parse travel duration: %v", err)
+		}
+
+		// Fetch all schedules for the same date
+		allSchedules, err := s.scheduleRepo.GetAllSchedules(currentSchedule.GoogleId, currentSchedule.Date)
+		if err != nil {
+			return fmt.Errorf("failed to fetch schedules for the day: %v", err)
+		}
+
+		// Get the time object of the updated start time
+		newStartTime, err := time.Parse("15:04", updatedSchedule.StartTime)
+		if err != nil {
+			return fmt.Errorf("failed to parse new start time: %v", err)
+		}
+
+		// Adjust the times of schedules that are before the updated schedule and have not passed
+		for _, sch := range allSchedules {
+			// Parse the current schedule's start and end times
+			scheduleStartTime, err := time.Parse("15:04", sch.StartTime)
+			if err != nil {
+				continue // Skip if time parsing fails
+			}
+			scheduleEndTime, err := time.Parse("15:04", sch.EndTime)
+			if err != nil {
+				continue // Skip if time parsing fails
+			}
+
+			// Calculate the duration of the current schedule
+			scheduleDuration := scheduleEndTime.Sub(scheduleStartTime)
+
+			// Skip schedules that are after the updated schedule or have already passed
+			if scheduleStartTime.After(newStartTime) || scheduleStartTime.Before(time.Now()) {
+				continue
+			}
+
+			// Adjust the start and end times based on the recalculated travel duration
+			sch.StartTime = newStartTime.Add(-travelDuration).Format("15:04")
+			sch.EndTime = newStartTime.Add(-travelDuration).Add(scheduleDuration).Format("15:04") // Maintain the original duration
+			newStartTime = newStartTime.Add(-travelDuration)                                      // Update for the next iteration
+
+			// Update the schedule in the database
+			err = s.scheduleRepo.UpdateSchedule(sch.Id, &repository.Schedule{
+				Name:          sch.Name,
+				Date:          sch.Date,
+				StartTime:     sch.StartTime,
+				EndTime:       sch.EndTime,
+				IsHaveEndTime: sch.IsHaveEndTime,
+			})
+
+			if err != nil {
+				return fmt.Errorf("failed to adjust schedule times: %v", err)
+			}
+		}
+	}
+
+	err = s.scheduleRepo.UpdateSchedule(id, updatedSchedule)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update schedule: %v", err)
 	}
 
 	return nil
