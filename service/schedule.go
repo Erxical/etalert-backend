@@ -13,6 +13,7 @@ type ScheduleInput struct {
 	DestLongitude   float64 `bson:"destLongitude"`
 	IsHaveLocation  bool    `bson:"isHaveLocation"`
 	IsFirstSchedule bool    `bson:"isFirstSchedule"`
+	IsTraveling     bool    `bson:"isTraveling"`
 	DepartTime      string  `bson:"departTime"`
 }
 
@@ -26,6 +27,7 @@ type ScheduleResponse struct {
 	Longitude       float64 `bson:"longitude"`
 	IsHaveLocation  bool    `bson:"isHaveLocation"`
 	IsFirstSchedule bool    `bson:"isFirstSchedule"`
+	IsTraveling     bool    `bson:"isTraveling"`
 }
 
 type ScheduleUpdateInput struct {

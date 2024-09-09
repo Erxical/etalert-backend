@@ -14,6 +14,7 @@ type Schedule struct {
 	DestLongitude   float64 `bson:"destLongitude"`
 	IsHaveLocation  bool    `bson:"isHaveLocation"`
 	IsFirstSchedule bool    `bson:"isFirstSchedule"`
+	IsTraveling     bool    `bson:"isTraveling"`
 }
 
 type ScheduleRepository interface {

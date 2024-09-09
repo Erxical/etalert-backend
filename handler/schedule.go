@@ -3,6 +3,7 @@ package handler
 import (
 	"etalert-backend/service"
 	"etalert-backend/validators"
+	"fmt"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -126,6 +127,7 @@ func (h *ScheduleHandler) UpdateSchedule(c *fiber.Ctx) error {
 
 	err := h.schedulesrv.UpdateSchedule(id, schedule)
 	if err != nil {
+		fmt.Println(err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update schedule"})
 	}
 
