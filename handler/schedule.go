@@ -28,6 +28,14 @@ type createScheduleRequest struct {
 	DepartTime      string  `json:"departTime"`
 }
 
+type updateScheduleRequest struct {
+	Name          string `json:"name" validate:"required"`
+	Date          string `json:"date" validate:"required"`
+	StartTime     string `json:"startTime" validate:"required"`
+	EndTime       string `json:"endTime"`
+	IsHaveEndTime bool   `json:"isHaveEndTime" validate:"required"`
+}
+
 type createScheduleResponse struct {
 	Message string `json:"message"`
 }
@@ -82,4 +90,31 @@ func (h *ScheduleHandler) GetAllSchedules(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Routine not found"})
 	}
 	return c.JSON(schedule)
+}
+
+func (h *ScheduleHandler) UpdateSchedule(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var req updateScheduleRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+	}
+
+	if err := validators.ValidateStruct(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	schedule := &service.ScheduleUpdateInput{
+		Name:          req.Name,
+		Date:          req.Date,
+		StartTime:     req.StartTime,
+		EndTime:       req.EndTime,
+		IsHaveEndTime: req.IsHaveEndTime,
+	}
+
+	err := h.schedulesrv.UpdateSchedule(id, schedule)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update schedule"})
+	}
+
+	return c.JSON(createScheduleResponse{Message: "Schedule updated successfully"})
 }

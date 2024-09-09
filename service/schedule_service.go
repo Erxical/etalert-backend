@@ -97,7 +97,7 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 		leaveTime := startTime.Add(-travelDuration).Format("15:04")
 		leaveSchedule := &repository.Schedule{
 			GoogleId:        schedule.GoogleId,
-			Name:            "Leave Home At",
+			Name:            "Leave Current Location",
 			Date:            schedule.Date,
 			StartTime:       leaveTime,
 			EndTime:         "",
@@ -124,67 +124,84 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 		}
 
 		currentStartTime, err := time.Parse("15:04", firstStartTime)
+		if err != nil {
+			return fmt.Errorf("failed to parse first schedule start time: %v", err)
+		}
+
+		// Iterate over each routine in reverse order to adjust start times correctly
+		for i := len(routines) - 1; i >= 0; i-- {
+			routine := routines[i]
+			routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
 			if err != nil {
-				return fmt.Errorf("failed to parse first schedule start time: %v", err)
+				return fmt.Errorf("failed to parse routine duration: %v", err)
 			}
 
-			// Iterate over each routine in reverse order to adjust start times correctly
-			for i := len(routines) - 1; i >= 0; i-- {
-				routine := routines[i]
-				routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
-				if err != nil {
-					return fmt.Errorf("failed to parse routine duration: %v", err)
-				}
-
-				// Adjust current start time by subtracting the routine duration
-				currentEndTime := currentStartTime
-				currentStartTime = currentStartTime.Add(-routineDuration)
-				newRoutineSchedule := &repository.Schedule{
-					GoogleId:        schedule.GoogleId,
-					Name:            routine.Name,
-					Date:            schedule.Date,
-					StartTime:       currentStartTime.Format("15:04"),
-					EndTime:         currentEndTime.Format("15:04"), // Adjust if needed based on routine
-					IsHaveEndTime:   false,
-					IsHaveLocation:  false,
-					IsFirstSchedule: false,
-				}
-
-				// Insert each adjusted routine as a schedule
-				err = s.scheduleRepo.InsertSchedule(newRoutineSchedule)
-				if err != nil {
-					return fmt.Errorf("failed to insert routine schedule: %v", err)
-				}
+			// Adjust current start time by subtracting the routine duration
+			currentEndTime := currentStartTime
+			currentStartTime = currentStartTime.Add(-routineDuration)
+			newRoutineSchedule := &repository.Schedule{
+				GoogleId:        schedule.GoogleId,
+				Name:            routine.Name,
+				Date:            schedule.Date,
+				StartTime:       currentStartTime.Format("15:04"),
+				EndTime:         currentEndTime.Format("15:04"), // Adjust if needed based on routine
+				IsHaveEndTime:   false,
+				IsHaveLocation:  false,
+				IsFirstSchedule: false,
 			}
+
+			// Insert each adjusted routine as a schedule
+			err = s.scheduleRepo.InsertSchedule(newRoutineSchedule)
+			if err != nil {
+				return fmt.Errorf("failed to insert routine schedule: %v", err)
+			}
+		}
 	}
 
 	return nil
 }
 
 func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error) {
-    schedules, err := s.scheduleRepo.GetAllSchedules(gId, date)
-    if err != nil {
-        return nil, err
-    }
+	schedules, err := s.scheduleRepo.GetAllSchedules(gId, date)
+	if err != nil {
+		return nil, err
+	}
 
-    var scheduleResponses []*ScheduleResponse
+	var scheduleResponses []*ScheduleResponse
 
-    for _, schedule := range schedules {
-        scheduleResponses = append(scheduleResponses, &ScheduleResponse{
-            Name: 		  schedule.Name,
-			StartTime:    schedule.StartTime,
-			EndTime:      schedule.EndTime,
-			IsHaveEndTime: schedule.IsHaveEndTime,
-			Latitude:     schedule.Latitude,
-			Longitude:    schedule.Longitude,
-			IsHaveLocation: schedule.IsHaveLocation,
+	for _, schedule := range schedules {
+		scheduleResponses = append(scheduleResponses, &ScheduleResponse{
+			Id:              schedule.Id,
+			Name:            schedule.Name,
+			StartTime:       schedule.StartTime,
+			EndTime:         schedule.EndTime,
+			IsHaveEndTime:   schedule.IsHaveEndTime,
+			Latitude:        schedule.Latitude,
+			Longitude:       schedule.Longitude,
+			IsHaveLocation:  schedule.IsHaveLocation,
 			IsFirstSchedule: schedule.IsFirstSchedule,
-        })
-    }
+		})
+	}
 
 	for i, j := 0, len(scheduleResponses)-1; i < j; i, j = i+1, j-1 {
 		scheduleResponses[i], scheduleResponses[j] = scheduleResponses[j], scheduleResponses[i]
 	}
 
-    return scheduleResponses, nil
+	return scheduleResponses, nil
+}
+
+func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInput) error {
+	// idFormat := "{$oid:\"" + id + "\"}"
+	err := s.scheduleRepo.UpdateSchedule(id, &repository.Schedule{
+		Name:          schedule.Name,
+		Date:          schedule.Date,
+		StartTime:     schedule.StartTime,
+		EndTime:       schedule.EndTime,
+		IsHaveEndTime: schedule.IsHaveEndTime,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

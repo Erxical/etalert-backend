@@ -16,7 +16,7 @@ func NewAuthService(userRepository repository.UserRepository) AuthService {
 	return &authService{userRepository: userRepository}
 }
 
-func (s authService) Login(loginInput *LoginInput) (LoginResponse, error) {
+func (s *authService) Login(loginInput *LoginInput) (LoginResponse, error) {
 	userRepo, err := s.userRepository.GetUserInfo(loginInput.GoogleId)
 	if err != nil {
 		return LoginResponse{}, err
