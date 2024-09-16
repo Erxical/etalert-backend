@@ -19,13 +19,13 @@ type createScheduleRequest struct {
 	Date            string  `json:"date" validate:"required"`
 	StartTime       string  `json:"startTime" validate:"required"`
 	EndTime         string  `json:"endTime"`
-	IsHaveEndTime   bool    `json:"isHaveEndTime" validate:"required"`
+	IsHaveEndTime   bool    `json:"isHaveEndTime"`
 	OriLatitude     float64 `json:"oriLatitude"`
 	OriLongitude    float64 `json:"oriLongitude"`
 	DestLatitude    float64 `json:"destLatitude"`
 	DestLongitude   float64 `json:"destLongitude"`
-	IsHaveLocation  bool    `json:"isHaveLocation" validate:"required"`
-	IsFirstSchedule bool    `json:"isFirstSchedule" validate:"required"`
+	IsHaveLocation  bool    `json:"isHaveLocation"`
+	IsFirstSchedule bool    `json:"isFirstSchedule"`
 	DepartTime      string  `json:"departTime"`
 }
 
@@ -34,7 +34,7 @@ type updateScheduleRequest struct {
 	Date          string `json:"date" validate:"required"`
 	StartTime     string `json:"startTime" validate:"required"`
 	EndTime       string `json:"endTime"`
-	IsHaveEndTime bool   `json:"isHaveEndTime" validate:"required"`
+	IsHaveEndTime bool   `json:"isHaveEndTime"`
 }
 
 type createScheduleResponse struct {
