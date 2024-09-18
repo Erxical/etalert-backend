@@ -104,9 +104,16 @@ func (s *scheduleRepositoryDB) InsertSchedule(schedule *Schedule) error {
 func (s *scheduleRepositoryDB) GetAllSchedules(gId string, date string) ([]*Schedule, error) {
 	ctx := context.Background()
 	var schedules []*Schedule
-	filter := bson.M{"googleId": gId, "date": date}
 
-	cursor, err := s.collection.Find(ctx, filter)
+	filter := bson.M{"googleId": gId}
+	if date != "" {
+		filter["date"] = date
+	}
+
+	cursor, err := s.collection.Find(ctx, filter, options.Find().SetSort(bson.D{
+		{Key: "date", Value: 1},
+		{Key: "startTime", Value: 1},
+	}))
 	if err != nil {
 		return nil, err
 	}
@@ -117,11 +124,9 @@ func (s *scheduleRepositoryDB) GetAllSchedules(gId string, date string) ([]*Sche
 		if err := cursor.Decode(&schedule); err != nil {
 			return nil, err
 		}
-		// Append the decoded routine to the slice
 		schedules = append(schedules, &schedule)
 	}
 
-	// Check if any errors occurred during iteration
 	if err := cursor.Err(); err != nil {
 		return nil, err
 	}

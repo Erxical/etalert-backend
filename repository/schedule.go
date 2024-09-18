@@ -8,8 +8,10 @@ type Schedule struct {
 	StartTime       string  `bson:"startTime"`
 	EndTime         string  `bson:"endTime"`
 	IsHaveEndTime   bool    `bson:"isHaveEndTime"`
+	OriName         string  `bson:"oriName"`
 	OriLatitude     float64 `bson:"oriLatitude"`
 	OriLongitude    float64 `bson:"oriLongitude"`
+	DestName        string  `bson:"destName"`
 	DestLatitude    float64 `bson:"destLatitude"`
 	DestLongitude   float64 `bson:"destLongitude"`
 	IsHaveLocation  bool    `bson:"isHaveLocation"`

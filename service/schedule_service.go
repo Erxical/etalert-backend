@@ -56,8 +56,10 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 		StartTime:       schedule.StartTime,
 		EndTime:         schedule.EndTime,
 		IsHaveEndTime:   schedule.IsHaveEndTime,
+		OriName:         schedule.OriName,
 		OriLatitude:     schedule.OriLatitude,
 		OriLongitude:    schedule.OriLongitude,
+		DestName:        schedule.DestName,
 		DestLatitude:    schedule.DestLatitude,
 		DestLongitude:   schedule.DestLongitude,
 		IsHaveLocation:  schedule.IsHaveLocation,
@@ -178,9 +180,11 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 		scheduleResponses = append(scheduleResponses, &ScheduleResponse{
 			Id:              schedule.Id,
 			Name:            schedule.Name,
+			Date:            schedule.Date,
 			StartTime:       schedule.StartTime,
 			EndTime:         schedule.EndTime,
 			IsHaveEndTime:   schedule.IsHaveEndTime,
+			LocName:         schedule.DestName,
 			Latitude:        schedule.DestLatitude,
 			Longitude:       schedule.DestLongitude,
 			IsHaveLocation:  schedule.IsHaveLocation,
@@ -189,9 +193,9 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 		})
 	}
 
-	for i, j := 0, len(scheduleResponses)-1; i < j; i, j = i+1, j-1 {
-		scheduleResponses[i], scheduleResponses[j] = scheduleResponses[j], scheduleResponses[i]
-	}
+	// for i, j := 0, len(scheduleResponses)-1; i < j; i, j = i+1, j-1 {
+	// 	scheduleResponses[i], scheduleResponses[j] = scheduleResponses[j], scheduleResponses[i]
+	// }
 
 	return scheduleResponses, nil
 }
@@ -205,9 +209,11 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 	return &ScheduleResponse{
 		Id:              schedule.Id,
 		Name:            schedule.Name,
+		Date:            schedule.Date,
 		StartTime:       schedule.StartTime,
 		EndTime:         schedule.EndTime,
 		IsHaveEndTime:   schedule.IsHaveEndTime,
+		LocName:         schedule.DestName,
 		Latitude:        schedule.DestLatitude,
 		Longitude:       schedule.DestLongitude,
 		IsHaveLocation:  schedule.IsHaveLocation,
@@ -274,7 +280,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 			// Adjust the current start time by subtracting the routine duration
 			currentStartTime = currentStartTime.Add(-duration)
 
-			if (sch.IsTraveling) {
+			if sch.IsTraveling {
 				travelTimeText, err := s.scheduleRepo.GetTravelTime(
 					fmt.Sprintf("%f", allSchedules[i-1].OriLatitude),
 					fmt.Sprintf("%f", allSchedules[i-1].OriLongitude),

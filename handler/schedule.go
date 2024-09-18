@@ -20,8 +20,10 @@ type createScheduleRequest struct {
 	StartTime       string  `json:"startTime" validate:"required"`
 	EndTime         string  `json:"endTime"`
 	IsHaveEndTime   bool    `json:"isHaveEndTime"`
+	OriName         string  `json:"oriName"`
 	OriLatitude     float64 `json:"oriLatitude"`
 	OriLongitude    float64 `json:"oriLongitude"`
+	DestName        string  `json:"destName"`
 	DestLatitude    float64 `json:"destLatitude"`
 	DestLongitude   float64 `json:"destLongitude"`
 	IsHaveLocation  bool    `json:"isHaveLocation"`
@@ -62,8 +64,10 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 		StartTime:       req.StartTime,
 		EndTime:         req.EndTime,
 		IsHaveEndTime:   req.IsHaveEndTime,
+		OriName:         req.OriName,
 		OriLatitude:     req.OriLatitude,
 		OriLongitude:    req.OriLongitude,
+		DestName:        req.DestName,
 		DestLatitude:    req.DestLatitude,
 		DestLongitude:   req.DestLongitude,
 		IsHaveLocation:  req.IsHaveLocation,
@@ -81,16 +85,16 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 
 func (h *ScheduleHandler) GetAllSchedules(c *fiber.Ctx) error {
 	googleId := c.Params("googleId")
-	date := c.Params("date")
+	date := c.Params("date", "")
 
-	schedule, err := h.schedulesrv.GetAllSchedules(googleId, date)
+	schedules, err := h.schedulesrv.GetAllSchedules(googleId, date)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get routine"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get schedule"})
 	}
-	if schedule == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Routine not found"})
+	if len(schedules) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Schedule not found"})
 	}
-	return c.JSON(schedule)
+	return c.JSON(schedules)
 }
 
 func (h *ScheduleHandler) GetScheduleById(c *fiber.Ctx) error {

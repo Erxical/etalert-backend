@@ -7,8 +7,10 @@ type ScheduleInput struct {
 	StartTime       string  `bson:"startTime"`
 	EndTime         string  `bson:"endTime"`
 	IsHaveEndTime   bool    `bson:"isHaveEndTime"`
+	OriName         string  `bson:"oriName"`
 	OriLatitude     float64 `bson:"oriLatitude"`
 	OriLongitude    float64 `bson:"oriLongitude"`
+	DestName        string  `bson:"destName"`
 	DestLatitude    float64 `bson:"destLatitude"`
 	DestLongitude   float64 `bson:"destLongitude"`
 	IsHaveLocation  bool    `bson:"isHaveLocation"`
@@ -20,9 +22,11 @@ type ScheduleInput struct {
 type ScheduleResponse struct {
 	Id              string  `bson:"_id"`
 	Name            string  `bson:"name"`
+	Date            string  `bson:"date"`
 	StartTime       string  `bson:"startTime"`
 	EndTime         string  `bson:"endTime"`
 	IsHaveEndTime   bool    `bson:"isHaveEndTime"`
+	LocName         string  `bson:"locName"`
 	Latitude        float64 `bson:"latitude"`
 	Longitude       float64 `bson:"longitude"`
 	IsHaveLocation  bool    `bson:"isHaveLocation"`
