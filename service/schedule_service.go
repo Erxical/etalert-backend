@@ -3,6 +3,7 @@ package service
 import (
 	"etalert-backend/repository"
 	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"time"
@@ -67,7 +68,7 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 		IsTraveling:     schedule.IsTraveling,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to insert schedule: %v", err)
 	}
 
 	if schedule.IsHaveLocation {
@@ -83,8 +84,8 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 			fmt.Sprintf("%f", schedule.DestLongitude),
 			departureTime,
 		)
-
 		if err != nil {
+			log.Printf("Failed to get travel time: %v", err)
 			return fmt.Errorf("failed to get travel time: %v", err)
 		}
 
@@ -98,8 +99,8 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 			return fmt.Errorf("failed to parse travel duration: %v", err)
 		}
 		travelDuration += 15 * time.Minute
-
 		leaveTime := startTime.Add(-travelDuration).Format("15:04")
+
 		leaveSchedule := &repository.Schedule{
 			GoogleId:        schedule.GoogleId,
 			Name:            "Leave Current Location",
@@ -114,57 +115,65 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 
 		err = s.scheduleRepo.InsertSchedule(leaveSchedule)
 		if err != nil {
+			log.Printf("Failed to insert leave home schedule: %v", err)
 			return fmt.Errorf("failed to insert leave home schedule: %v", err)
 		}
 	}
 
 	if schedule.IsFirstSchedule {
-		firstStartTime, err := s.scheduleRepo.GetFirstSchedule(schedule.GoogleId, schedule.Date)
+		err := s.insertRoutineSchedules(schedule)
 		if err != nil {
-			return fmt.Errorf("failed to get first schedule start time: %v", err)
-		}
-
-		routines, err := s.routineRepo.GetAllRoutines(schedule.GoogleId)
-		if err != nil {
-			return fmt.Errorf("failed to fetch user routines: %v", err)
-		}
-
-		currentStartTime, err := time.Parse("15:04", firstStartTime)
-		if err != nil {
-			return fmt.Errorf("failed to parse first schedule start time: %v", err)
-		}
-
-		// Iterate over each routine in reverse order to adjust start times correctly
-		for i := len(routines) - 1; i >= 0; i-- {
-			routine := routines[i]
-			routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
-			if err != nil {
-				return fmt.Errorf("failed to parse routine duration: %v", err)
-			}
-
-			// Adjust current start time by subtracting the routine duration
-			currentEndTime := currentStartTime
-			currentStartTime = currentStartTime.Add(-routineDuration)
-			newRoutineSchedule := &repository.Schedule{
-				GoogleId:        schedule.GoogleId,
-				Name:            routine.Name,
-				Date:            schedule.Date,
-				StartTime:       currentStartTime.Format("15:04"),
-				EndTime:         currentEndTime.Format("15:04"), // Adjust if needed based on routine
-				IsHaveEndTime:   true,
-				IsHaveLocation:  false,
-				IsFirstSchedule: false,
-				IsTraveling:     false,
-			}
-
-			// Insert each adjusted routine as a schedule
-			err = s.scheduleRepo.InsertSchedule(newRoutineSchedule)
-			if err != nil {
-				return fmt.Errorf("failed to insert routine schedule: %v", err)
-			}
+			log.Printf("Failed to insert routines: %v", err)
 		}
 	}
 
+	return nil
+}
+
+func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error {
+	firstStartTime, err := s.scheduleRepo.GetFirstSchedule(schedule.GoogleId, schedule.Date)
+	if err != nil {
+		return fmt.Errorf("failed to get first schedule start time: %v", err)
+	}
+
+	routines, err := s.routineRepo.GetAllRoutines(schedule.GoogleId)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user routines: %v", err)
+	}
+
+	currentStartTime, err := time.Parse("15:04", firstStartTime)
+	if err != nil {
+		return fmt.Errorf("failed to parse first schedule start time: %v", err)
+	}
+
+	for i := len(routines) - 1; i >= 0; i-- {
+		routine := routines[i]
+		routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
+		if err != nil {
+			return fmt.Errorf("failed to parse routine duration: %v", err)
+		}
+
+		currentEndTime := currentStartTime
+		currentStartTime = currentStartTime.Add(-routineDuration)
+
+		newRoutineSchedule := &repository.Schedule{
+			GoogleId:        schedule.GoogleId,
+			Name:            routine.Name,
+			Date:            schedule.Date,
+			StartTime:       currentStartTime.Format("15:04"),
+			EndTime:         currentEndTime.Format("15:04"),
+			IsHaveEndTime:   true,
+			IsHaveLocation:  false,
+			IsFirstSchedule: false,
+			IsTraveling:     false,
+		}
+
+		err = s.scheduleRepo.InsertSchedule(newRoutineSchedule)
+		if err != nil {
+			log.Printf("Failed to insert routine schedule: %v", err) // Log and continue
+			return fmt.Errorf("failed to insert routine schedule: %v", err)
+		}
+	}
 	return nil
 }
 
