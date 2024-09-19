@@ -26,7 +26,8 @@ type ScheduleResponse struct {
 	StartTime       string  `bson:"startTime"`
 	EndTime         string  `bson:"endTime"`
 	IsHaveEndTime   bool    `bson:"isHaveEndTime"`
-	LocName         string  `bson:"locName"`
+	OriName         string  `bson:"oriName"`
+	DestName        string  `bson:"destName"`
 	Latitude        float64 `bson:"latitude"`
 	Longitude       float64 `bson:"longitude"`
 	IsHaveLocation  bool    `bson:"isHaveLocation"`
