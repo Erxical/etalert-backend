@@ -51,6 +51,8 @@ func main() {
 	scheduleService := service.NewScheduleService(scheduleRepository, routineRepository)
 	scheduleHandler := handler.NewScheduleHandler(scheduleService)
 
+	scheduleService.StartCronJob()
+
 	// initialize new instance of fiber
 	server := fiber.New()
 

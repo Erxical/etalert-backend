@@ -16,6 +16,7 @@ type ScheduleInput struct {
 	IsHaveLocation  bool    `bson:"isHaveLocation"`
 	IsFirstSchedule bool    `bson:"isFirstSchedule"`
 	IsTraveling     bool    `bson:"isTraveling"`
+	IsUpdated       bool    `bson:"isUpdated"`
 	DepartTime      string  `bson:"departTime"`
 }
 
@@ -33,6 +34,7 @@ type ScheduleResponse struct {
 	IsHaveLocation  bool    `bson:"isHaveLocation"`
 	IsFirstSchedule bool    `bson:"isFirstSchedule"`
 	IsTraveling     bool    `bson:"isTraveling"`
+	IsUpdated       bool    `bson:"isUpdated"`
 }
 
 type ScheduleUpdateInput struct {
@@ -44,6 +46,7 @@ type ScheduleUpdateInput struct {
 }
 
 type ScheduleService interface {
+	StartCronJob()
 	InsertSchedule(schedule *ScheduleInput) error
 	GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error)
 	GetScheduleById(id string) (*ScheduleResponse, error)

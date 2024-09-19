@@ -28,7 +28,6 @@ type createScheduleRequest struct {
 	DestLongitude   float64 `json:"destLongitude"`
 	IsHaveLocation  bool    `json:"isHaveLocation"`
 	IsFirstSchedule bool    `json:"isFirstSchedule"`
-	DepartTime      string  `json:"departTime"`
 }
 
 type updateScheduleRequest struct {
@@ -72,7 +71,6 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 		DestLongitude:   req.DestLongitude,
 		IsHaveLocation:  req.IsHaveLocation,
 		IsFirstSchedule: req.IsFirstSchedule,
-		DepartTime:      req.DepartTime,
 	}
 
 	err := h.schedulesrv.InsertSchedule(schedule)

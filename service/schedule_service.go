@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/robfig/cron/v3"
 )
 
 type scheduleService struct {
@@ -49,6 +51,108 @@ func parseDuration(durationText string) (time.Duration, error) {
 	return time.Duration(totalMinutes) * time.Minute, nil
 }
 
+func (s *scheduleService) StartCronJob() {
+	c := cron.New()
+	c.AddFunc("@every 1m", func() {
+		s.checkUpcomingSchedules()
+	})
+	c.Start()
+}
+
+func (s *scheduleService) checkUpcomingSchedules() {
+	currentTime := time.Now()
+	nextHour := currentTime.Add(1 * time.Hour)
+
+	// Query schedules that are traveling, have startTime within the next hour, and aren't yet updated
+	schedules, err := s.scheduleRepo.GetUpcomingTravelSchedules(nextHour)
+	if err != nil {
+		log.Printf("Error querying upcoming travel schedules: %v", err)
+		return
+	}
+
+	// For each upcoming travel schedule, recalculate travel time
+	for _, schedule := range schedules {
+		if !schedule.IsUpdated { // Only update if not already updated
+			err := s.recalculateAndUpdateSchedule(schedule)
+			if err != nil {
+				log.Printf("Failed to update schedule %v: %v", schedule.GoogleId, err)
+			}
+		}
+	}
+}
+
+func (s *scheduleService) recalculateAndUpdateSchedule(schedule *repository.Schedule) error {
+	startTime, err := time.Parse("15:04", schedule.StartTime) // Assuming time is in "HH:mm" format
+	if err != nil {
+		return fmt.Errorf("failed to parse start time: %v", err)
+	}
+	// Step 1: Recalculate the travel time for the current schedule
+	travelTimeText, err := s.scheduleRepo.GetTravelTime(
+		fmt.Sprintf("%f", schedule.OriLatitude),
+		fmt.Sprintf("%f", schedule.OriLongitude),
+		fmt.Sprintf("%f", schedule.DestLatitude),
+		fmt.Sprintf("%f", schedule.DestLongitude),
+		"now",
+	)
+	if err != nil {
+		return fmt.Errorf("failed to recalculate travel time: %v", err)
+	}
+
+	// Step 2: Parse the recalculated travel duration
+	travelDuration, err := parseDuration(travelTimeText)
+	if err != nil {
+		return fmt.Errorf("failed to parse travel duration: %v", err)
+	}
+
+	// Step 3: Adjust the current schedule's leave time based on the new travel duration
+	newLeaveTime := startTime.Add(-travelDuration - 15*time.Minute) // Example adjustment
+
+	// Step 5: Convert newLeaveTime back to string format if needed
+	newLeaveTimeStr := newLeaveTime.Format("15:04")
+
+	// Update the current schedule with the new leave time
+	err = s.scheduleRepo.UpdateScheduleStartTime(schedule.GoogleId, newLeaveTimeStr)
+	if err != nil {
+		return fmt.Errorf("failed to update schedule start time: %v", err)
+	}
+
+	log.Printf("Updated schedule for %v, new leave time: %v", schedule.GoogleId, newLeaveTimeStr)
+
+	// Step 6: Shift the previous schedule's endTime earlier
+	err = s.adjustPreviousSchedules(schedule.GoogleId, schedule.Date, newLeaveTime)
+	if err != nil {
+		return fmt.Errorf("failed to adjust previous schedules: %v", err)
+	}
+
+	return nil
+}
+
+func (s *scheduleService) adjustPreviousSchedules(googleId string, date string, newStartTime time.Time) error {
+	// Find the previous schedule that ends just before the current schedule
+	previousSchedule, err := s.scheduleRepo.GetPreviousSchedule(googleId, date, newStartTime)
+	if err != nil {
+		return fmt.Errorf("failed to fetch previous schedule: %v", err)
+	}
+
+	// If there's no previous schedule, there's nothing to adjust
+	if previousSchedule == nil {
+		return nil
+	}
+
+	// Adjust the end time of the previous schedule to end right before the new start time
+	newEndTime := newStartTime.Add(-5 * time.Minute) // Adjusting to end 5 minutes before the current schedule's start time
+	err = s.scheduleRepo.UpdateScheduleEndTime(previousSchedule.GoogleId, newEndTime)
+	if err != nil {
+		return fmt.Errorf("failed to update previous schedule end time: %v", err)
+	}
+
+	// Log the adjustment
+	log.Printf("Updated previous schedule for %v, new end time: %v", previousSchedule.GoogleId, newEndTime)
+
+	// Step 6: Recursively adjust previous schedules if needed
+	return s.adjustPreviousSchedules(previousSchedule.GoogleId, previousSchedule.Date, newEndTime)
+}
+
 func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 	err := s.scheduleRepo.InsertSchedule(&repository.Schedule{
 		GoogleId:        schedule.GoogleId,
@@ -66,57 +170,16 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
+		IsUpdated:       false,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to insert schedule: %v", err)
 	}
 
 	if schedule.IsHaveLocation {
-		departureTime := schedule.DepartTime
-		if departureTime == "" {
-			departureTime = "now"
-		}
-
-		travelTimeText, err := s.scheduleRepo.GetTravelTime(
-			fmt.Sprintf("%f", schedule.OriLatitude),
-			fmt.Sprintf("%f", schedule.OriLongitude),
-			fmt.Sprintf("%f", schedule.DestLatitude),
-			fmt.Sprintf("%f", schedule.DestLongitude),
-			departureTime,
-		)
+		err := s.handleTravelSchedule(schedule)
 		if err != nil {
-			log.Printf("Failed to get travel time: %v", err)
-			return fmt.Errorf("failed to get travel time: %v", err)
-		}
-
-		startTime, err := time.Parse("15:04", schedule.StartTime)
-		if err != nil {
-			return fmt.Errorf("failed to parse start time: %v", err)
-		}
-
-		travelDuration, err := parseDuration(travelTimeText)
-		if err != nil {
-			return fmt.Errorf("failed to parse travel duration: %v", err)
-		}
-		travelDuration += 15 * time.Minute
-		leaveTime := startTime.Add(-travelDuration).Format("15:04")
-
-		leaveSchedule := &repository.Schedule{
-			GoogleId:        schedule.GoogleId,
-			Name:            "Leave Current Location",
-			Date:            schedule.Date,
-			StartTime:       leaveTime,
-			EndTime:         "",
-			IsHaveEndTime:   false,
-			IsHaveLocation:  false,
-			IsFirstSchedule: false,
-			IsTraveling:     true,
-		}
-
-		err = s.scheduleRepo.InsertSchedule(leaveSchedule)
-		if err != nil {
-			log.Printf("Failed to insert leave home schedule: %v", err)
-			return fmt.Errorf("failed to insert leave home schedule: %v", err)
+			log.Printf("Failed to handle travel schedule: %v", err)
 		}
 	}
 
@@ -127,6 +190,63 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 		}
 	}
 
+	return nil
+}
+
+func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
+	departureTime := schedule.DepartTime
+	if departureTime == "" {
+		departureTime = "now"
+	}
+
+	travelTimeText, err := s.scheduleRepo.GetTravelTime(
+		fmt.Sprintf("%f", schedule.OriLatitude),
+		fmt.Sprintf("%f", schedule.OriLongitude),
+		fmt.Sprintf("%f", schedule.DestLatitude),
+		fmt.Sprintf("%f", schedule.DestLongitude),
+		departureTime,
+	)
+	if err != nil {
+		log.Printf("Failed to get travel time: %v", err)
+		return fmt.Errorf("failed to get travel time: %v", err)
+	}
+
+	startTime, err := time.Parse("15:04", schedule.StartTime)
+	if err != nil {
+		return fmt.Errorf("failed to parse start time: %v", err)
+	}
+
+	travelDuration, err := parseDuration(travelTimeText)
+	if err != nil {
+		return fmt.Errorf("failed to parse travel duration: %v", err)
+	}
+	travelDuration += 15 * time.Minute
+	leaveTime := startTime.Add(-travelDuration).Format("15:04")
+
+	leaveSchedule := &repository.Schedule{
+		GoogleId:        schedule.GoogleId,
+		Name:            "Leave Current Location",
+		Date:            schedule.Date,
+		StartTime:       leaveTime,
+		EndTime:         schedule.StartTime,
+		IsHaveEndTime:   false,
+		OriName:         schedule.OriName,
+		OriLatitude:     schedule.OriLatitude,
+		OriLongitude:    schedule.OriLongitude,
+		DestName:        schedule.DestName,
+		DestLatitude:    schedule.DestLatitude,
+		DestLongitude:   schedule.DestLongitude,
+		IsHaveLocation:  false,
+		IsFirstSchedule: false,
+		IsTraveling:     true,
+		IsUpdated:       false,
+	}
+
+	err = s.scheduleRepo.InsertSchedule(leaveSchedule)
+	if err != nil {
+		log.Printf("Failed to insert leave home schedule: %v", err)
+		return fmt.Errorf("failed to insert leave home schedule: %v", err)
+	}
 	return nil
 }
 
@@ -166,6 +286,7 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 			IsHaveLocation:  false,
 			IsFirstSchedule: false,
 			IsTraveling:     false,
+			IsUpdated:       false,
 		}
 
 		err = s.scheduleRepo.InsertSchedule(newRoutineSchedule)

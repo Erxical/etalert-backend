@@ -38,6 +38,89 @@ type DistanceMatrixResponse struct {
 	Status string `json:"status"`
 }
 
+func (s *scheduleRepositoryDB) GetUpcomingTravelSchedules(nextHour time.Time) ([]*Schedule, error) {
+	ctx := context.Background()
+	var schedules []*Schedule
+
+	filter := bson.M{
+		"isTraveling": true,
+		"isUpdated":   false,
+		"startTime":   nextHour.Format("15:04"),
+	}
+	cursor, err := s.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var schedule Schedule
+		if err := cursor.Decode(&schedule); err != nil {
+			return nil, err
+		}
+		schedules = append(schedules, &schedule)
+	}
+
+	return schedules, nil
+}
+
+func (s *scheduleRepositoryDB) UpdateScheduleStartTime(googleId string, newStartTime string) error {
+	ctx := context.Background()
+
+	filter := bson.M{
+		"googleId":  googleId,
+		"isUpdated": false,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"startTime": newStartTime,
+			"isUpdated": true,
+		},
+	}
+	_, err := s.collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
+func (s *scheduleRepositoryDB) GetPreviousSchedule(googleId string, date string, newStartTime time.Time) (*Schedule, error) {
+	ctx := context.Background()
+	var schedule Schedule
+
+	// Find the previous schedule that ends before newStartTime
+	filter := bson.M{
+		"googleId": googleId,
+		"date":     date,
+		"endTime": bson.M{
+			"$lt": newStartTime.Format("15:04"), // Previous schedule should end before the new start time
+		},
+	}
+	opts := options.FindOne().SetSort(bson.D{{Key: "endTime", Value: -1}}) // Sort to get the latest one
+
+	err := s.collection.FindOne(ctx, filter, opts).Decode(&schedule)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil // No previous schedule found
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &schedule, nil
+}
+
+func (s *scheduleRepositoryDB) UpdateScheduleEndTime(googleId string, newEndTime time.Time) error {
+	ctx := context.Background()
+
+	filter := bson.M{"googleId": googleId}
+	update := bson.M{
+		"$set": bson.M{
+			"endTime":   newEndTime,
+			"isUpdated": true,
+		},
+	}
+
+	_, err := s.collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
 func (s *scheduleRepositoryDB) GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, depTime string) (string, error) {
 	godotenv.Load()
 	apiKey := os.Getenv("G_MAP_API_KEY")
