@@ -23,7 +23,7 @@ type Schedule struct {
 }
 
 type ScheduleRepository interface {
-	GetUpcomingTravelSchedules(nextHour time.Time) ([]*Schedule, error)
+	GetUpcomingTravelSchedules(currentTime, nextHour time.Time) ([]*Schedule, error)
 	UpdateScheduleStartTime(googleId string, newStartTime string) error
 	GetPreviousSchedule(googleId string, date string, newStartTime time.Time) (*Schedule, error)
 	UpdateScheduleEndTime(googleId string, newEndTime time.Time) error

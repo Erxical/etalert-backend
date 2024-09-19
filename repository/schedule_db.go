@@ -38,14 +38,17 @@ type DistanceMatrixResponse struct {
 	Status string `json:"status"`
 }
 
-func (s *scheduleRepositoryDB) GetUpcomingTravelSchedules(nextHour time.Time) ([]*Schedule, error) {
+func (s *scheduleRepositoryDB) GetUpcomingTravelSchedules(currentTime, nextHour time.Time) ([]*Schedule, error) {
 	ctx := context.Background()
 	var schedules []*Schedule
 
 	filter := bson.M{
 		"isTraveling": true,
 		"isUpdated":   false,
-		"startTime":   nextHour.Format("15:04"),
+		"startTime": bson.M{
+            "$gte": currentTime.Format("15:04"),
+            "$lte": nextHour.Format("15:04"),
+        },
 	}
 	cursor, err := s.collection.Find(ctx, filter)
 	if err != nil {

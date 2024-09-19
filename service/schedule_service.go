@@ -55,6 +55,7 @@ func (s *scheduleService) StartCronJob() {
 	c := cron.New()
 	c.AddFunc("@every 1m", func() {
 		s.checkUpcomingSchedules()
+		fmt.Println("Checking upcoming schedules...")
 	})
 	c.Start()
 }
@@ -64,7 +65,7 @@ func (s *scheduleService) checkUpcomingSchedules() {
 	nextHour := currentTime.Add(1 * time.Hour)
 
 	// Query schedules that are traveling, have startTime within the next hour, and aren't yet updated
-	schedules, err := s.scheduleRepo.GetUpcomingTravelSchedules(nextHour)
+	schedules, err := s.scheduleRepo.GetUpcomingTravelSchedules(currentTime, nextHour)
 	if err != nil {
 		log.Printf("Error querying upcoming travel schedules: %v", err)
 		return
