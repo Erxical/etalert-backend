@@ -54,8 +54,8 @@ func parseDuration(durationText string) (time.Duration, error) {
 func (s *scheduleService) StartCronJob() {
 	c := cron.New()
 	c.AddFunc("@every 1m", func() {
-		s.checkUpcomingSchedules()
 		fmt.Println("Checking upcoming schedules...")
+		s.checkUpcomingSchedules()
 	})
 	c.Start()
 }
@@ -73,6 +73,7 @@ func (s *scheduleService) checkUpcomingSchedules() {
 
 	// For each upcoming travel schedule, recalculate travel time
 	for _, schedule := range schedules {
+		fmt.Println(schedule)
 		if !schedule.IsUpdated { // Only update if not already updated
 			err := s.recalculateAndUpdateSchedule(schedule)
 			if err != nil {
@@ -83,46 +84,72 @@ func (s *scheduleService) checkUpcomingSchedules() {
 }
 
 func (s *scheduleService) recalculateAndUpdateSchedule(schedule *repository.Schedule) error {
-	startTime, err := time.Parse("15:04", schedule.StartTime) // Assuming time is in "HH:mm" format
+	// Parse the base schedule's original startTime
+	startTime, err := time.Parse("15:04", schedule.EndTime) // Assuming time is in "HH:mm" format
 	if err != nil {
-		return fmt.Errorf("failed to parse start time: %v", err)
+		return fmt.Errorf("failed to parse base schedule start time: %v", err)
 	}
-	// Step 1: Recalculate the travel time for the current schedule
+
+	fmt.Println(startTime)
+
+	// Step 1: Get the related travel schedule (if it exists)
+	travelSchedule, err := s.scheduleRepo.GetTravelSchedule(schedule.GoogleId, schedule.Date)
+	if err != nil {
+		return fmt.Errorf("failed to fetch travel schedule: %v", err)
+	}
+	if travelSchedule == nil {
+		return fmt.Errorf("no travel schedule found for schedule: %v", schedule.GoogleId)
+	}
+
+	// Step 2: Recalculate the travel time for the travel schedule
 	travelTimeText, err := s.scheduleRepo.GetTravelTime(
-		fmt.Sprintf("%f", schedule.OriLatitude),
-		fmt.Sprintf("%f", schedule.OriLongitude),
-		fmt.Sprintf("%f", schedule.DestLatitude),
-		fmt.Sprintf("%f", schedule.DestLongitude),
+		fmt.Sprintf("%f", travelSchedule.OriLatitude),
+		fmt.Sprintf("%f", travelSchedule.OriLongitude),
+		fmt.Sprintf("%f", travelSchedule.DestLatitude),
+		fmt.Sprintf("%f", travelSchedule.DestLongitude),
 		"now",
 	)
 	if err != nil {
 		return fmt.Errorf("failed to recalculate travel time: %v", err)
 	}
 
-	// Step 2: Parse the recalculated travel duration
+	// Step 3: Parse the recalculated travel duration
 	travelDuration, err := parseDuration(travelTimeText)
 	if err != nil {
 		return fmt.Errorf("failed to parse travel duration: %v", err)
 	}
 
-	// Step 3: Adjust the current schedule's leave time based on the new travel duration
-	newLeaveTime := startTime.Add(-travelDuration - 15*time.Minute) // Example adjustment
+	fmt.Println(travelDuration)
 
-	// Step 5: Convert newLeaveTime back to string format if needed
-	newLeaveTimeStr := newLeaveTime.Format("15:04")
+	// Step 4: Adjust the travel schedule's startTime and endTime
+	newTravelEndTime := startTime     // Travel should end 15 minutes before the base schedule's startTime
+	newTravelStartTime := newTravelEndTime.Add(-(travelDuration + (15 * time.Minute))) // Adjust travel start time based on travel duration
 
-	// Update the current schedule with the new leave time
-	err = s.scheduleRepo.UpdateScheduleStartTime(schedule.GoogleId, newLeaveTimeStr)
+	newTravelEndTimeStr := newTravelEndTime.Format("15:04")
+	newTravelStartTimeStr := newTravelStartTime.Format("15:04")
+
+	fmt.Println(newTravelEndTimeStr, newTravelStartTimeStr)
+
+	// Update the travel schedule's startTime and endTime
+	err = s.scheduleRepo.UpdateTravelScheduleTimes(travelSchedule.GoogleId, newTravelStartTimeStr, newTravelEndTimeStr)
 	if err != nil {
-		return fmt.Errorf("failed to update schedule start time: %v", err)
+		return fmt.Errorf("failed to update travel schedule times: %v", err)
 	}
 
-	log.Printf("Updated schedule for %v, new leave time: %v", schedule.GoogleId, newLeaveTimeStr)
+	log.Printf("Updated travel schedule for %v, new start time: %v, new end time: %v", travelSchedule.GoogleId, newTravelStartTimeStr, newTravelEndTimeStr)
 
-	// Step 6: Shift the previous schedule's endTime earlier
-	err = s.adjustPreviousSchedules(schedule.GoogleId, schedule.Date, newLeaveTime)
+	// Step 5: Adjust the base schedule's startTime to match the travel schedule's endTime
+	err = s.scheduleRepo.UpdateScheduleStartTime(schedule.GoogleId, newTravelEndTimeStr)
 	if err != nil {
-		return fmt.Errorf("failed to adjust previous schedules: %v", err)
+		return fmt.Errorf("failed to update base schedule start time: %v", err)
+	}
+
+	// Step 6: If base schedule is the first schedule, adjust previous schedules recursively
+	if schedule.IsFirstSchedule {
+		err = s.adjustPreviousSchedules(schedule.GoogleId, schedule.Date, newTravelStartTime)
+		if err != nil {
+			return fmt.Errorf("failed to adjust previous schedules: %v", err)
+		}
 	}
 
 	return nil
@@ -136,13 +163,23 @@ func (s *scheduleService) adjustPreviousSchedules(googleId string, date string, 
 	}
 
 	// If there's no previous schedule, there's nothing to adjust
-	if previousSchedule == nil {
+	if previousSchedule == nil || previousSchedule.EndTime == "" {
+		return nil
+	}
+
+	previousEndTime, err := time.Parse("15:04", previousSchedule.EndTime)
+	if err != nil {
+		return fmt.Errorf("failed to parse previous schedule end time: %v", err)
+	}
+
+	// Stop recursion if the previous schedule's endTime is already before newStartTime
+	if previousEndTime.Before(newStartTime) {
 		return nil
 	}
 
 	// Adjust the end time of the previous schedule to end right before the new start time
 	newEndTime := newStartTime.Add(-5 * time.Minute) // Adjusting to end 5 minutes before the current schedule's start time
-	err = s.scheduleRepo.UpdateScheduleEndTime(previousSchedule.GoogleId, newEndTime)
+	err = s.scheduleRepo.UpdateScheduleEndTime(previousSchedule.GoogleId, previousSchedule.Id, newEndTime)
 	if err != nil {
 		return fmt.Errorf("failed to update previous schedule end time: %v", err)
 	}

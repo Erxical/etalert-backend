@@ -46,9 +46,9 @@ func (s *scheduleRepositoryDB) GetUpcomingTravelSchedules(currentTime, nextHour 
 		"isTraveling": true,
 		"isUpdated":   false,
 		"startTime": bson.M{
-            "$gte": currentTime.Format("15:04"),
-            "$lte": nextHour.Format("15:04"),
-        },
+			"$gte": currentTime.Format("15:04"),
+			"$lte": nextHour.Format("15:04"),
+		},
 	}
 	cursor, err := s.collection.Find(ctx, filter)
 	if err != nil {
@@ -65,6 +65,48 @@ func (s *scheduleRepositoryDB) GetUpcomingTravelSchedules(currentTime, nextHour 
 	}
 
 	return schedules, nil
+}
+
+func (s *scheduleRepositoryDB) GetTravelSchedule(googleId string, date string) (*Schedule, error) {
+	ctx := context.Background()
+	var travelSchedule Schedule
+
+	// Query for the travel schedule based on the googleId, date, and isTraveling = true
+	filter := bson.M{
+		"googleId":    googleId,
+		"date":        date,
+		"isTraveling": true, // Filter to find the travel schedule
+	}
+
+	err := s.collection.FindOne(ctx, filter).Decode(&travelSchedule)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil // No travel schedule found
+	}
+	if err != nil {
+		return nil, err // Return other errors if found
+	}
+
+	return &travelSchedule, nil
+}
+
+func (s *scheduleRepositoryDB) UpdateTravelScheduleTimes(googleId string, newStartTime string, newEndTime string) error {
+    ctx := context.Background()
+
+    filter := bson.M{
+        "googleId":  googleId,
+        "isTraveling": true,  // Make sure we're updating the travel schedule
+		"isUpdated": false,
+    }
+    update := bson.M{
+        "$set": bson.M{
+            "startTime": newStartTime,
+            "endTime":   newEndTime,
+            "isUpdated": true,
+        },
+    }
+
+    _, err := s.collection.UpdateOne(ctx, filter, update)
+    return err
 }
 
 func (s *scheduleRepositoryDB) UpdateScheduleStartTime(googleId string, newStartTime string) error {
@@ -109,13 +151,16 @@ func (s *scheduleRepositoryDB) GetPreviousSchedule(googleId string, date string,
 	return &schedule, nil
 }
 
-func (s *scheduleRepositoryDB) UpdateScheduleEndTime(googleId string, newEndTime time.Time) error {
+func (s *scheduleRepositoryDB) UpdateScheduleEndTime(googleId string, scheduleId string, newEndTime time.Time) error {
 	ctx := context.Background()
 
-	filter := bson.M{"googleId": googleId}
+	filter := bson.M{
+		"googleId": googleId,
+		"_id":      scheduleId, // Ensure the correct schedule is updated
+	}
 	update := bson.M{
 		"$set": bson.M{
-			"endTime":   newEndTime,
+			"endTime":   newEndTime.Format("15:04"),
 			"isUpdated": true,
 		},
 	}
