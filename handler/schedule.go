@@ -135,3 +135,14 @@ func (h *ScheduleHandler) UpdateSchedule(c *fiber.Ctx) error {
 
 	return c.JSON(createScheduleResponse{Message: "Schedule updated successfully"})
 }
+
+func (h *ScheduleHandler) DeleteSchedule(c *fiber.Ctx) error {
+	groupId := c.Params("groupId")
+
+	err := h.schedulesrv.DeleteSchedule(groupId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete schedule"})
+	}
+
+	return c.JSON(createScheduleResponse{Message: "Schedule deleted successfully"})
+}

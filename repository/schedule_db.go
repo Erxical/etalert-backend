@@ -90,23 +90,23 @@ func (s *scheduleRepositoryDB) GetTravelSchedule(googleId string, date string) (
 }
 
 func (s *scheduleRepositoryDB) UpdateTravelScheduleTimes(googleId string, newStartTime string, newEndTime string) error {
-    ctx := context.Background()
+	ctx := context.Background()
 
-    filter := bson.M{
-        "googleId":  googleId,
-        "isTraveling": true,  // Make sure we're updating the travel schedule
-		"isUpdated": false,
-    }
-    update := bson.M{
-        "$set": bson.M{
-            "startTime": newStartTime,
-            "endTime":   newEndTime,
-            "isUpdated": true,
-        },
-    }
+	filter := bson.M{
+		"googleId":    googleId,
+		"isTraveling": true, // Make sure we're updating the travel schedule
+		"isUpdated":   false,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"startTime": newStartTime,
+			"endTime":   newEndTime,
+			"isUpdated": true,
+		},
+	}
 
-    _, err := s.collection.UpdateOne(ctx, filter, update)
-    return err
+	_, err := s.collection.UpdateOne(ctx, filter, update)
+	return err
 }
 
 func (s *scheduleRepositoryDB) UpdateScheduleStartTime(googleId string, newStartTime string) error {
@@ -226,6 +226,18 @@ func (s *scheduleRepositoryDB) GetFirstSchedule(googleId string, date string) (s
 	return schedule.StartTime, nil
 }
 
+func (s *scheduleRepositoryDB) GetNextGroupId() (int, error) {
+	var counter Counter
+	ctx := context.Background()
+	err := s.collection.FindOneAndUpdate(ctx, bson.M{"_id": "groupId"}, bson.M{"$inc": bson.M{"seq": 1}}, options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)).Decode(&counter)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to get next groupId: %v", err)
+	}
+
+	return counter.Seq, nil
+}
+
 func (s *scheduleRepositoryDB) InsertSchedule(schedule *Schedule) error {
 	ctx := context.Background()
 	_, err := s.collection.InsertOne(ctx, schedule)
@@ -302,5 +314,14 @@ func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) err
 	}
 
 	_, err = s.collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
+func (s *scheduleRepositoryDB) DeleteSchedule(groupId int) error {
+	ctx := context.Background()
+	filter := bson.M{"groupId": groupId}
+	fmt.Println(groupId)
+
+	_, err := s.collection.DeleteMany(ctx, filter)
 	return err
 }

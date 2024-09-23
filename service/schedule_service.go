@@ -122,7 +122,7 @@ func (s *scheduleService) recalculateAndUpdateSchedule(schedule *repository.Sche
 	fmt.Println(travelDuration)
 
 	// Step 4: Adjust the travel schedule's startTime and endTime
-	newTravelEndTime := startTime     // Travel should end 15 minutes before the base schedule's startTime
+	newTravelEndTime := startTime                                                      // Travel should end 15 minutes before the base schedule's startTime
 	newTravelStartTime := newTravelEndTime.Add(-(travelDuration + (15 * time.Minute))) // Adjust travel start time based on travel duration
 
 	newTravelEndTimeStr := newTravelEndTime.Format("15:04")
@@ -192,7 +192,13 @@ func (s *scheduleService) adjustPreviousSchedules(googleId string, date string, 
 }
 
 func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
-	err := s.scheduleRepo.InsertSchedule(&repository.Schedule{
+	groupId, err := s.scheduleRepo.GetNextGroupId()
+	if err != nil {
+		return fmt.Errorf("failed to get next group ID: %v", err)
+	}
+	schedule.GroupId = groupId
+
+	err = s.scheduleRepo.InsertSchedule(&repository.Schedule{
 		GoogleId:        schedule.GoogleId,
 		Name:            schedule.Name,
 		Date:            schedule.Date,
@@ -205,6 +211,7 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 		DestName:        schedule.DestName,
 		DestLatitude:    schedule.DestLatitude,
 		DestLongitude:   schedule.DestLongitude,
+		GroupId:         schedule.GroupId,
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
@@ -274,6 +281,7 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 		DestName:        schedule.DestName,
 		DestLatitude:    schedule.DestLatitude,
 		DestLongitude:   schedule.DestLongitude,
+		GroupId:         schedule.GroupId,
 		IsHaveLocation:  false,
 		IsFirstSchedule: false,
 		IsTraveling:     true,
@@ -320,6 +328,7 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 			Date:            schedule.Date,
 			StartTime:       currentStartTime.Format("15:04"),
 			EndTime:         currentEndTime.Format("15:04"),
+			GroupId:         schedule.GroupId,
 			IsHaveEndTime:   true,
 			IsHaveLocation:  false,
 			IsFirstSchedule: false,
@@ -353,9 +362,12 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 			EndTime:         schedule.EndTime,
 			IsHaveEndTime:   schedule.IsHaveEndTime,
 			OriName:         schedule.OriName,
+			OriLatitude:     schedule.OriLatitude,
+			OriLongitude:    schedule.OriLongitude,
 			DestName:        schedule.DestName,
-			Latitude:        schedule.DestLatitude,
-			Longitude:       schedule.DestLongitude,
+			DestLatitude:    schedule.DestLatitude,
+			DestLongitude:   schedule.DestLongitude,
+			GroupId:         schedule.GroupId,
 			IsHaveLocation:  schedule.IsHaveLocation,
 			IsFirstSchedule: schedule.IsFirstSchedule,
 			IsTraveling:     schedule.IsTraveling,
@@ -383,9 +395,12 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 		EndTime:         schedule.EndTime,
 		IsHaveEndTime:   schedule.IsHaveEndTime,
 		OriName:         schedule.OriName,
+		OriLatitude:     schedule.OriLatitude,
+		OriLongitude:    schedule.OriLongitude,
 		DestName:        schedule.DestName,
-		Latitude:        schedule.DestLatitude,
-		Longitude:       schedule.DestLongitude,
+		DestLatitude:    schedule.DestLatitude,
+		DestLongitude:   schedule.DestLongitude,
+		GroupId:         schedule.GroupId,
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
@@ -505,5 +520,17 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 		return fmt.Errorf("failed to update schedule: %v", err)
 	}
 
+	return nil
+}
+
+func (s *scheduleService) DeleteSchedule(groupId string) error {
+	id, err := strconv.Atoi(groupId)
+	if err != nil {
+		return fmt.Errorf("invalid groupId: %v", err)
+	}
+	err = s.scheduleRepo.DeleteSchedule(id)
+	if err != nil {
+		return fmt.Errorf("failed to delete schedule: %v", err)
+	}
 	return nil
 }
