@@ -90,7 +90,8 @@ func (h *ScheduleHandler) GetAllSchedules(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get schedule"})
 	}
 	if len(schedules) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Schedule not found"})
+		// return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Schedule not found"})
+		return c.JSON([]interface{}{})
 	}
 	return c.JSON(schedules)
 }
