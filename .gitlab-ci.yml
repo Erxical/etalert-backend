@@ -3,8 +3,6 @@ stages:
 
 build-etalert-backend:
   stage: build
-  needs:
-    - job: etalert-backend
   image: docker:latest
   # when: manual
   services:
