@@ -14,10 +14,11 @@ import (
 type scheduleService struct {
 	scheduleRepo repository.ScheduleRepository
 	routineRepo  repository.RoutineRepository
+	bedtimeRepo repository.BedtimeRepository
 }
 
-func NewScheduleService(scheduleRepo repository.ScheduleRepository, routineRepo repository.RoutineRepository) ScheduleService {
-	return &scheduleService{scheduleRepo: scheduleRepo, routineRepo: routineRepo}
+func NewScheduleService(scheduleRepo repository.ScheduleRepository, routineRepo repository.RoutineRepository, bedTimeRepo repository.BedtimeRepository) ScheduleService {
+	return &scheduleService{scheduleRepo: scheduleRepo, routineRepo: routineRepo, bedtimeRepo: bedTimeRepo}
 }
 
 func parseDuration(durationText string) (time.Duration, error) {
@@ -345,6 +346,22 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 
 	bedtimeStartTime := currentStartTime.Add(-5 * time.Minute)
 
+	predefinedBedtime, err := s.bedtimeRepo.GetBedtimeInfo(schedule.GoogleId)
+	if err != nil {
+		return fmt.Errorf("failed to get predefined bedtime: %v", err)
+	}
+
+	// Parse the predefined bedtime for comparison
+	predefinedBedtimeTime, err := time.Parse("15:04", predefinedBedtime.WakeTime)
+	if err != nil {
+		return fmt.Errorf("failed to parse predefined bedtime: %v", err)
+	}
+
+	// Compare the predefined bedtime with the auto-calculated bedtime
+	if bedtimeStartTime.Before(predefinedBedtimeTime) {
+		return fmt.Errorf("warning: auto-calculated bedtime is earlier than the predefined bedtime")
+	}
+
 	bedtimeSchedule := &repository.Schedule{
 		GoogleId:        schedule.GoogleId,
 		Name:            "Wake up",
@@ -395,10 +412,6 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 			IsTraveling:     schedule.IsTraveling,
 		})
 	}
-
-	// for i, j := 0, len(scheduleResponses)-1; i < j; i, j = i+1, j-1 {
-	// 	scheduleResponses[i], scheduleResponses[j] = scheduleResponses[j], scheduleResponses[i]
-	// }
 
 	return scheduleResponses, nil
 }
