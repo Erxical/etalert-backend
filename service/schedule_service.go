@@ -14,7 +14,7 @@ import (
 type scheduleService struct {
 	scheduleRepo repository.ScheduleRepository
 	routineRepo  repository.RoutineRepository
-	bedtimeRepo repository.BedtimeRepository
+	bedtimeRepo  repository.BedtimeRepository
 }
 
 func NewScheduleService(scheduleRepo repository.ScheduleRepository, routineRepo repository.RoutineRepository, bedTimeRepo repository.BedtimeRepository) ScheduleService {
@@ -213,6 +213,7 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 		DestLatitude:    schedule.DestLatitude,
 		DestLongitude:   schedule.DestLongitude,
 		GroupId:         schedule.GroupId,
+		Priority:        schedule.Priority,
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
@@ -407,6 +408,7 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 			DestLatitude:    schedule.DestLatitude,
 			DestLongitude:   schedule.DestLongitude,
 			GroupId:         schedule.GroupId,
+			Priority:        schedule.Priority,
 			IsHaveLocation:  schedule.IsHaveLocation,
 			IsFirstSchedule: schedule.IsFirstSchedule,
 			IsTraveling:     schedule.IsTraveling,
@@ -436,6 +438,7 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 		DestLatitude:    schedule.DestLatitude,
 		DestLongitude:   schedule.DestLongitude,
 		GroupId:         schedule.GroupId,
+		Priority:        schedule.Priority,
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,

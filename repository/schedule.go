@@ -17,6 +17,7 @@ type Schedule struct {
 	DestLatitude    float64 `bson:"destLatitude"`
 	DestLongitude   float64 `bson:"destLongitude"`
 	GroupId         int     `bson:"groupId"`
+	Priority		int     `bson:"priority"`
 	IsHaveLocation  bool    `bson:"isHaveLocation"`
 	IsFirstSchedule bool    `bson:"isFirstSchedule"`
 	IsTraveling     bool    `bson:"isTraveling"`
