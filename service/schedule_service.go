@@ -343,17 +343,15 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 		}
 	}
 
-	bedtimeEndTime := currentStartTime
 	bedtimeStartTime := currentStartTime.Add(-5 * time.Minute)
 
 	bedtimeSchedule := &repository.Schedule{
 		GoogleId:        schedule.GoogleId,
-		Name:            "Bedtime",
+		Name:            "Wake up",
 		Date:            schedule.Date,
 		StartTime:       bedtimeStartTime.Format("15:04"),
-		EndTime:         bedtimeEndTime.Format("15:04"),
 		GroupId:         schedule.GroupId,
-		IsHaveEndTime:   true,
+		IsHaveEndTime:   false,
 		IsHaveLocation:  false,
 		IsFirstSchedule: false,
 		IsTraveling:     false,
