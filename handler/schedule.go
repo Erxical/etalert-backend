@@ -3,6 +3,7 @@ package handler
 import (
 	"etalert-backend/service"
 	"etalert-backend/validators"
+	"fmt"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -18,14 +19,15 @@ type createScheduleRequest struct {
 	Date            string  `json:"date" validate:"required"`
 	StartTime       string  `json:"startTime" validate:"required"`
 	EndTime         string  `json:"endTime"`
-	IsHaveEndTime   bool    `json:"isHaveEndTime" validate:"required"`
+	IsHaveEndTime   bool    `json:"isHaveEndTime"`
+	OriName         string  `json:"oriName"`
 	OriLatitude     float64 `json:"oriLatitude"`
 	OriLongitude    float64 `json:"oriLongitude"`
+	DestName        string  `json:"destName"`
 	DestLatitude    float64 `json:"destLatitude"`
 	DestLongitude   float64 `json:"destLongitude"`
-	IsHaveLocation  bool    `json:"isHaveLocation" validate:"required"`
-	IsFirstSchedule bool    `json:"isFirstSchedule" validate:"required"`
-	DepartTime      string  `json:"departTime"`
+	IsHaveLocation  bool    `json:"isHaveLocation"`
+	IsFirstSchedule bool    `json:"isFirstSchedule"`
 }
 
 type updateScheduleRequest struct {
@@ -33,7 +35,7 @@ type updateScheduleRequest struct {
 	Date          string `json:"date" validate:"required"`
 	StartTime     string `json:"startTime" validate:"required"`
 	EndTime       string `json:"endTime"`
-	IsHaveEndTime bool   `json:"isHaveEndTime" validate:"required"`
+	IsHaveEndTime bool   `json:"isHaveEndTime"`
 }
 
 type createScheduleResponse struct {
@@ -61,13 +63,14 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 		StartTime:       req.StartTime,
 		EndTime:         req.EndTime,
 		IsHaveEndTime:   req.IsHaveEndTime,
+		OriName:         req.OriName,
 		OriLatitude:     req.OriLatitude,
 		OriLongitude:    req.OriLongitude,
+		DestName:        req.DestName,
 		DestLatitude:    req.DestLatitude,
 		DestLongitude:   req.DestLongitude,
 		IsHaveLocation:  req.IsHaveLocation,
 		IsFirstSchedule: req.IsFirstSchedule,
-		DepartTime:      req.DepartTime,
 	}
 
 	err := h.schedulesrv.InsertSchedule(schedule)
@@ -80,16 +83,17 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 
 func (h *ScheduleHandler) GetAllSchedules(c *fiber.Ctx) error {
 	googleId := c.Params("googleId")
-	date := c.Params("date")
+	date := c.Params("date", "")
 
-	schedule, err := h.schedulesrv.GetAllSchedules(googleId, date)
+	schedules, err := h.schedulesrv.GetAllSchedules(googleId, date)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get routine"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get schedule"})
 	}
-	if schedule == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Routine not found"})
+	if len(schedules) == 0 {
+		// return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Schedule not found"})
+		return c.JSON([]interface{}{})
 	}
-	return c.JSON(schedule)
+	return c.JSON(schedules)
 }
 
 func (h *ScheduleHandler) GetScheduleById(c *fiber.Ctx) error {
@@ -126,8 +130,20 @@ func (h *ScheduleHandler) UpdateSchedule(c *fiber.Ctx) error {
 
 	err := h.schedulesrv.UpdateSchedule(id, schedule)
 	if err != nil {
+		fmt.Println(err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update schedule"})
 	}
 
 	return c.JSON(createScheduleResponse{Message: "Schedule updated successfully"})
+}
+
+func (h *ScheduleHandler) DeleteSchedule(c *fiber.Ctx) error {
+	groupId := c.Params("groupId")
+
+	err := h.schedulesrv.DeleteSchedule(groupId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete schedule"})
+	}
+
+	return c.JSON(createScheduleResponse{Message: "Schedule deleted successfully"})
 }

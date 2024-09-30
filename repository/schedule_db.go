@@ -38,6 +38,137 @@ type DistanceMatrixResponse struct {
 	Status string `json:"status"`
 }
 
+func (s *scheduleRepositoryDB) GetUpcomingTravelSchedules(currentTime, nextHour time.Time) ([]*Schedule, error) {
+	ctx := context.Background()
+	var schedules []*Schedule
+
+	filter := bson.M{
+		"isTraveling": true,
+		"isUpdated":   false,
+		"startTime": bson.M{
+			"$gte": currentTime.Format("15:04"),
+			"$lte": nextHour.Format("15:04"),
+		},
+	}
+	cursor, err := s.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var schedule Schedule
+		if err := cursor.Decode(&schedule); err != nil {
+			return nil, err
+		}
+		schedules = append(schedules, &schedule)
+	}
+
+	return schedules, nil
+}
+
+func (s *scheduleRepositoryDB) GetTravelSchedule(googleId string, date string) (*Schedule, error) {
+	ctx := context.Background()
+	var travelSchedule Schedule
+
+	// Query for the travel schedule based on the googleId, date, and isTraveling = true
+	filter := bson.M{
+		"googleId":    googleId,
+		"date":        date,
+		"isTraveling": true, // Filter to find the travel schedule
+	}
+
+	err := s.collection.FindOne(ctx, filter).Decode(&travelSchedule)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil // No travel schedule found
+	}
+	if err != nil {
+		return nil, err // Return other errors if found
+	}
+
+	return &travelSchedule, nil
+}
+
+func (s *scheduleRepositoryDB) UpdateTravelScheduleTimes(googleId string, newStartTime string, newEndTime string) error {
+	ctx := context.Background()
+
+	filter := bson.M{
+		"googleId":    googleId,
+		"isTraveling": true, // Make sure we're updating the travel schedule
+		"isUpdated":   false,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"startTime": newStartTime,
+			"endTime":   newEndTime,
+			"isUpdated": true,
+		},
+	}
+
+	_, err := s.collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
+func (s *scheduleRepositoryDB) UpdateScheduleStartTime(googleId string, newStartTime string) error {
+	ctx := context.Background()
+
+	filter := bson.M{
+		"googleId":  googleId,
+		"isUpdated": false,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"startTime": newStartTime,
+			"isUpdated": true,
+		},
+	}
+	_, err := s.collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
+func (s *scheduleRepositoryDB) GetPreviousSchedule(googleId string, date string, newStartTime time.Time) (*Schedule, error) {
+	ctx := context.Background()
+	var schedule Schedule
+
+	// Find the previous schedule that ends before newStartTime
+	filter := bson.M{
+		"googleId": googleId,
+		"date":     date,
+		"endTime": bson.M{
+			"$lt": newStartTime.Format("15:04"), // Previous schedule should end before the new start time
+		},
+	}
+	opts := options.FindOne().SetSort(bson.D{{Key: "endTime", Value: -1}}) // Sort to get the latest one
+
+	err := s.collection.FindOne(ctx, filter, opts).Decode(&schedule)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil // No previous schedule found
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &schedule, nil
+}
+
+func (s *scheduleRepositoryDB) UpdateScheduleEndTime(googleId string, scheduleId string, newEndTime time.Time) error {
+	ctx := context.Background()
+
+	filter := bson.M{
+		"googleId": googleId,
+		"_id":      scheduleId, // Ensure the correct schedule is updated
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"endTime":   newEndTime.Format("15:04"),
+			"isUpdated": true,
+		},
+	}
+
+	_, err := s.collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
 func (s *scheduleRepositoryDB) GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, depTime string) (string, error) {
 	godotenv.Load()
 	apiKey := os.Getenv("G_MAP_API_KEY")
@@ -95,6 +226,18 @@ func (s *scheduleRepositoryDB) GetFirstSchedule(googleId string, date string) (s
 	return schedule.StartTime, nil
 }
 
+func (s *scheduleRepositoryDB) GetNextGroupId() (int, error) {
+	var counter Counter
+	ctx := context.Background()
+	err := s.collection.FindOneAndUpdate(ctx, bson.M{"_id": "groupId"}, bson.M{"$inc": bson.M{"seq": 1}}, options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)).Decode(&counter)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to get next groupId: %v", err)
+	}
+
+	return counter.Seq, nil
+}
+
 func (s *scheduleRepositoryDB) InsertSchedule(schedule *Schedule) error {
 	ctx := context.Background()
 	_, err := s.collection.InsertOne(ctx, schedule)
@@ -104,9 +247,16 @@ func (s *scheduleRepositoryDB) InsertSchedule(schedule *Schedule) error {
 func (s *scheduleRepositoryDB) GetAllSchedules(gId string, date string) ([]*Schedule, error) {
 	ctx := context.Background()
 	var schedules []*Schedule
-	filter := bson.M{"googleId": gId, "date": date}
 
-	cursor, err := s.collection.Find(ctx, filter)
+	filter := bson.M{"googleId": gId}
+	if date != "" {
+		filter["date"] = date
+	}
+
+	cursor, err := s.collection.Find(ctx, filter, options.Find().SetSort(bson.D{
+		{Key: "date", Value: 1},
+		{Key: "startTime", Value: 1},
+	}))
 	if err != nil {
 		return nil, err
 	}
@@ -117,11 +267,9 @@ func (s *scheduleRepositoryDB) GetAllSchedules(gId string, date string) ([]*Sche
 		if err := cursor.Decode(&schedule); err != nil {
 			return nil, err
 		}
-		// Append the decoded routine to the slice
 		schedules = append(schedules, &schedule)
 	}
 
-	// Check if any errors occurred during iteration
 	if err := cursor.Err(); err != nil {
 		return nil, err
 	}
@@ -166,5 +314,14 @@ func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) err
 	}
 
 	_, err = s.collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
+func (s *scheduleRepositoryDB) DeleteSchedule(groupId int) error {
+	ctx := context.Background()
+	filter := bson.M{"groupId": groupId}
+	fmt.Println(groupId)
+
+	_, err := s.collection.DeleteMany(ctx, filter)
 	return err
 }

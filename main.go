@@ -51,6 +51,8 @@ func main() {
 	scheduleService := service.NewScheduleService(scheduleRepository, routineRepository)
 	scheduleHandler := handler.NewScheduleHandler(scheduleService)
 
+	scheduleService.StartCronJob()
+
 	// initialize new instance of fiber
 	server := fiber.New()
 
@@ -77,10 +79,11 @@ func main() {
 
 	//Schedule routes
 	protected.Post("/schedules", scheduleHandler.CreateSchedule)
-	protected.Get("/schedules/:googleId/:date", scheduleHandler.GetAllSchedules)
+	protected.Get("/schedules/:googleId/:date?", scheduleHandler.GetAllSchedules)
 	protected.Get("/schedules/:id", scheduleHandler.GetScheduleById)
 	protected.Patch("/schedules/:id", scheduleHandler.UpdateSchedule)
+	protected.Delete("/schedules/:groupId", scheduleHandler.DeleteSchedule)
 
 	// listen to port 3000
-	log.Fatal(server.Listen("localhost:3000"))
+	log.Fatal(server.Listen(":3000"))
 }
