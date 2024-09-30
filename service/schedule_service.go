@@ -270,7 +270,7 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 
 	leaveSchedule := &repository.Schedule{
 		GoogleId:        schedule.GoogleId,
-		Name:            "Leave" + schedule.OriName,
+		Name:            "Leave " + schedule.OriName,
 		Date:            schedule.Date,
 		StartTime:       leaveTime,
 		EndTime:         schedule.StartTime,
@@ -342,6 +342,30 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 			return fmt.Errorf("failed to insert routine schedule: %v", err)
 		}
 	}
+
+	bedtimeEndTime := currentStartTime
+	bedtimeStartTime := currentStartTime.Add(-5 * time.Minute)
+
+	bedtimeSchedule := &repository.Schedule{
+		GoogleId:        schedule.GoogleId,
+		Name:            "Bedtime",
+		Date:            schedule.Date,
+		StartTime:       bedtimeStartTime.Format("15:04"),
+		EndTime:         bedtimeEndTime.Format("15:04"),
+		GroupId:         schedule.GroupId,
+		IsHaveEndTime:   true,
+		IsHaveLocation:  false,
+		IsFirstSchedule: false,
+		IsTraveling:     false,
+		IsUpdated:       false,
+	}
+
+	err = s.scheduleRepo.InsertSchedule(bedtimeSchedule)
+	if err != nil {
+		log.Printf("Failed to insert bedtime schedule: %v", err) // Log and continue
+		return fmt.Errorf("failed to insert bedtime schedule: %v", err)
+	}
+
 	return nil
 }
 
