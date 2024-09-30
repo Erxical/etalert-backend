@@ -8,4 +8,5 @@ build-etalert-backend:
   services:
     - docker:dind
   script:
+    - chmod +x build-docker-etalert-backend.sh
     - ./build-docker-etalert-backend.sh
