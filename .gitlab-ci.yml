@@ -1,3 +1,13 @@
-job-run-test:
+stages:
+  - build
+
+build-etalert-backend:
+  stage: build
+  needs:
+    - job: etalert-backend
+  image: docker:latest
+  # when: manual
+  services:
+    - docker:dind
   script:
-    - echo "hello demo job run"
+    - ./build-docker-etalert-backend.sh

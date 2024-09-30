@@ -85,5 +85,5 @@ func main() {
 	protected.Delete("/schedules/:groupId", scheduleHandler.DeleteSchedule)
 
 	// listen to port 3000
-	log.Fatal(server.Listen("localhost:3000"))
+	log.Fatal(server.Listen(":3000"))
 }
