@@ -270,7 +270,7 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 
 	leaveSchedule := &repository.Schedule{
 		GoogleId:        schedule.GoogleId,
-		Name:            "Leave Current Location",
+		Name:            "Leave" + schedule.OriName,
 		Date:            schedule.Date,
 		StartTime:       leaveTime,
 		EndTime:         schedule.StartTime,
