@@ -2,6 +2,7 @@ package service
 
 import (
 	"etalert-backend/repository"
+	"etalert-backend/websocket"
 	"fmt"
 	"log"
 	"regexp"
@@ -80,6 +81,9 @@ func (s *scheduleService) checkUpcomingSchedules() {
 			if err != nil {
 				log.Printf("Failed to update schedule %v: %v", schedule.GoogleId, err)
 			}
+
+			updateMessage := []byte(fmt.Sprintf("Schedule updated for Google ID: %s", schedule.GoogleId))
+            websocket.SendUpdate(updateMessage)
 		}
 	}
 }
@@ -557,6 +561,9 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 	if err != nil {
 		return fmt.Errorf("failed to update schedule: %v", err)
 	}
+
+	updateMessage := []byte(fmt.Sprintf("Schedule updated for ID: %s", id))
+    websocket.SendUpdate(updateMessage)
 
 	return nil
 }
