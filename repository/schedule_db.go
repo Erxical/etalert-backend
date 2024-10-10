@@ -320,7 +320,6 @@ func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) err
 func (s *scheduleRepositoryDB) DeleteSchedule(groupId int) error {
 	ctx := context.Background()
 	filter := bson.M{"groupId": groupId}
-	fmt.Println(groupId)
 
 	_, err := s.collection.DeleteMany(ctx, filter)
 	return err

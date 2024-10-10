@@ -83,7 +83,7 @@ func (s *scheduleService) checkUpcomingSchedules() {
 			}
 
 			updateMessage := []byte(fmt.Sprintf("Schedule updated for Google ID: %s", schedule.GoogleId))
-            websocket.SendUpdate(updateMessage)
+			websocket.SendUpdate(updateMessage)
 		}
 	}
 }
@@ -362,11 +362,6 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 		return fmt.Errorf("failed to parse predefined bedtime: %v", err)
 	}
 
-	// Compare the predefined bedtime with the auto-calculated bedtime
-	if bedtimeStartTime.Before(predefinedBedtimeTime) {
-		return fmt.Errorf("warning: auto-calculated bedtime is earlier than the predefined bedtime")
-	}
-
 	bedtimeSchedule := &repository.Schedule{
 		GoogleId:        schedule.GoogleId,
 		Name:            "Wake up",
@@ -381,6 +376,12 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 	}
 
 	err = s.scheduleRepo.InsertSchedule(bedtimeSchedule)
+
+	// Compare the predefined bedtime with the auto-calculated bedtime
+	if bedtimeStartTime.Before(predefinedBedtimeTime) {
+		return fmt.Errorf("warning: auto-calculated bedtime is earlier than the predefined bedtime")
+	}
+	
 	if err != nil {
 		log.Printf("Failed to insert bedtime schedule: %v", err) // Log and continue
 		return fmt.Errorf("failed to insert bedtime schedule: %v", err)
@@ -563,7 +564,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 	}
 
 	updateMessage := []byte(fmt.Sprintf("Schedule updated for ID: %s", id))
-    websocket.SendUpdate(updateMessage)
+	websocket.SendUpdate(updateMessage)
 
 	return nil
 }
