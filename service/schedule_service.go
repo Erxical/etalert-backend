@@ -305,6 +305,9 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 }
 
 func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (string, error) {
+	if schedule == nil {
+        return "", fmt.Errorf("schedule cannot be nil")
+    }
 	firstStartTime, err := s.scheduleRepo.GetFirstSchedule(schedule.GoogleId, schedule.Date)
 	if err != nil {
 		return "", fmt.Errorf("failed to get first schedule start time: %v", err)
