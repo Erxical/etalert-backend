@@ -53,7 +53,7 @@ type ScheduleUpdateInput struct {
 
 type ScheduleService interface {
 	StartCronJob()
-	InsertSchedule(schedule *ScheduleInput) error
+	InsertSchedule(schedule *ScheduleInput) (string, error)
 	GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error)
 	GetScheduleById(id string) (*ScheduleResponse, error)
 	UpdateSchedule(id string, schedule *ScheduleUpdateInput) error

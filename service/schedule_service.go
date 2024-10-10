@@ -196,10 +196,10 @@ func (s *scheduleService) adjustPreviousSchedules(googleId string, date string, 
 	return s.adjustPreviousSchedules(previousSchedule.GoogleId, previousSchedule.Date, newEndTime)
 }
 
-func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
+func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error) {
 	groupId, err := s.scheduleRepo.GetNextGroupId()
 	if err != nil {
-		return fmt.Errorf("failed to get next group ID: %v", err)
+		return "", fmt.Errorf("failed to get next group ID: %v", err)
 	}
 	schedule.GroupId = groupId
 
@@ -224,7 +224,7 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 		IsUpdated:       false,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to insert schedule: %v", err)
+		return "", fmt.Errorf("failed to insert schedule: %v", err)
 	}
 
 	if schedule.IsHaveLocation {
@@ -235,13 +235,15 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 	}
 
 	if schedule.IsFirstSchedule {
-		err := s.insertRoutineSchedules(schedule)
+		str, err := s.insertRoutineSchedules(schedule)
 		if err != nil {
 			log.Printf("Failed to insert routines: %v", err)
+		} else {
+			return str, nil
 		}
 	}
 
-	return nil
+	return "", nil
 }
 
 func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
@@ -302,27 +304,27 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 	return nil
 }
 
-func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error {
+func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (string, error) {
 	firstStartTime, err := s.scheduleRepo.GetFirstSchedule(schedule.GoogleId, schedule.Date)
 	if err != nil {
-		return fmt.Errorf("failed to get first schedule start time: %v", err)
+		return "", fmt.Errorf("failed to get first schedule start time: %v", err)
 	}
 
 	routines, err := s.routineRepo.GetAllRoutines(schedule.GoogleId)
 	if err != nil {
-		return fmt.Errorf("failed to fetch user routines: %v", err)
+		return "", fmt.Errorf("failed to fetch user routines: %v", err)
 	}
 
 	currentStartTime, err := time.Parse("15:04", firstStartTime)
 	if err != nil {
-		return fmt.Errorf("failed to parse first schedule start time: %v", err)
+		return "", fmt.Errorf("failed to parse first schedule start time: %v", err)
 	}
 
 	for i := len(routines) - 1; i >= 0; i-- {
 		routine := routines[i]
 		routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
 		if err != nil {
-			return fmt.Errorf("failed to parse routine duration: %v", err)
+			return "", fmt.Errorf("failed to parse routine duration: %v", err)
 		}
 
 		currentEndTime := currentStartTime
@@ -345,7 +347,7 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 		err = s.scheduleRepo.InsertSchedule(newRoutineSchedule)
 		if err != nil {
 			log.Printf("Failed to insert routine schedule: %v", err) // Log and continue
-			return fmt.Errorf("failed to insert routine schedule: %v", err)
+			return "", fmt.Errorf("failed to insert routine schedule: %v", err)
 		}
 	}
 
@@ -353,13 +355,18 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 
 	predefinedBedtime, err := s.bedtimeRepo.GetBedtimeInfo(schedule.GoogleId)
 	if err != nil {
-		return fmt.Errorf("failed to get predefined bedtime: %v", err)
+		return "", fmt.Errorf("failed to get predefined bedtime: %v", err)
 	}
 
 	// Parse the predefined bedtime for comparison
 	predefinedBedtimeTime, err := time.Parse("15:04", predefinedBedtime.WakeTime)
 	if err != nil {
-		return fmt.Errorf("failed to parse predefined bedtime: %v", err)
+		return "", fmt.Errorf("failed to parse predefined bedtime: %v", err)
+	}
+
+	// Compare the predefined bedtime with the auto-calculated bedtime
+	if bedtimeStartTime.Before(predefinedBedtimeTime) {
+		return "warning: auto-calculated bedtime is earlier than the predefined bedtime", nil
 	}
 
 	bedtimeSchedule := &repository.Schedule{
@@ -377,17 +384,12 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 
 	err = s.scheduleRepo.InsertSchedule(bedtimeSchedule)
 
-	// Compare the predefined bedtime with the auto-calculated bedtime
-	if bedtimeStartTime.Before(predefinedBedtimeTime) {
-		return fmt.Errorf("warning: auto-calculated bedtime is earlier than the predefined bedtime")
-	}
-	
 	if err != nil {
 		log.Printf("Failed to insert bedtime schedule: %v", err) // Log and continue
-		return fmt.Errorf("failed to insert bedtime schedule: %v", err)
+		return "", fmt.Errorf("failed to insert bedtime schedule: %v", err)
 	}
 
-	return nil
+	return "", nil
 }
 
 func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error) {
