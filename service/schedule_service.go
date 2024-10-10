@@ -366,7 +366,7 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 
 	// Compare the predefined bedtime with the auto-calculated bedtime
 	if bedtimeStartTime.Before(predefinedBedtimeTime) {
-		return "warning: auto-calculated bedtime is earlier than the predefined bedtime", nil
+		return "(auto-calculated bedtime is earlier than the predefined bedtime)", nil
 	}
 
 	bedtimeSchedule := &repository.Schedule{

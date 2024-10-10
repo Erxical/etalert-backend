@@ -75,9 +75,13 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 		IsFirstSchedule: req.IsFirstSchedule,
 	}
 
-	err := h.schedulesrv.InsertSchedule(schedule)
+	str, err := h.schedulesrv.InsertSchedule(schedule)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to insert schedule"})
+	}
+
+	if str != "" {
+		return c.Status(fiber.StatusCreated).JSON(createScheduleResponse{Message: "Schedule created successfully with warning " + str})
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(createScheduleResponse{Message: "Schedule created successfully"})
