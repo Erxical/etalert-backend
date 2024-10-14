@@ -1,7 +1,5 @@
 package repository
 
-import "time"
-
 type Schedule struct {
 	Id              string  `bson:"_id,omitempty"`
 	GoogleId        string  `bson:"googleId"`
@@ -30,12 +28,6 @@ type Counter struct {
 }
 
 type ScheduleRepository interface {
-	GetUpcomingTravelSchedules(currentTime, nextHour time.Time) ([]*Schedule, error)
-	GetTravelSchedule(googleId string, date string) (*Schedule, error)
-	UpdateTravelScheduleTimes(googleId string, newStartTime string, newEndTime string) error
-	UpdateScheduleStartTime(googleId string, newStartTime string) error
-	GetPreviousSchedule(googleId string, date string, newStartTime time.Time) (*Schedule, error)
-	UpdateScheduleEndTime(googleId string, scheduleId string, newEndTime time.Time) error
 	GetFirstSchedule(gId string, date string) (string, error)
 	GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, depTime string) (string, error)
 	GetNextGroupId() (int, error)

@@ -49,8 +49,10 @@ func main() {
 	routineService := service.NewRoutineService(routineRepository)
 	routineHandler := handler.NewRoutineHandler(routineService)
 
+	scheduleLogRepository := repository.NewScheduleLogRepositoryDB(client, "etalert", "scheduleLog")
+
 	scheduleRepository := repository.NewScheduleRepositoryDB(client, "etalert", "schedule")
-	scheduleService := service.NewScheduleService(scheduleRepository, routineRepository, bedtimeRepository)
+	scheduleService := service.NewScheduleService(scheduleRepository, scheduleLogRepository, routineRepository, bedtimeRepository)
 	scheduleHandler := handler.NewScheduleHandler(scheduleService)
 
 	scheduleService.StartCronJob()
