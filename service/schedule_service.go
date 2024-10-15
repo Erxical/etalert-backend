@@ -116,14 +116,18 @@ func (s *scheduleService) autoUpdateSchedules() {
 				if err != nil {
 					log.Printf("failed to parse start time: %v", err)
 				}
-				endTime, err := time.Parse("15:04", schedule.EndTime)
-				if err != nil {
-					log.Printf("failed to parse end time: %v", err)
+				endTime := startTime.Add(5 * time.Minute)
+				if schedule.EndTime != "" {
+					endTime, err = time.Parse("15:04", schedule.EndTime)
+					if err != nil {
+						log.Printf("failed to parse end time: %v", err)
+					}
 				}
 				duration := endTime.Sub(startTime)
 
 				newEndTime = newStartTime
-				newStartTime = startTime.Add(-duration).Format("15:04")
+				startTimeForNext, _ := time.Parse("15:04", newStartTime)
+				newStartTime = startTimeForNext.Add(-duration).Format("15:04")
 
 				err = s.scheduleRepo.UpdateScheduleTime(schedule.Id, newStartTime, newEndTime)
 				if err != nil {
