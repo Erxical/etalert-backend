@@ -7,9 +7,12 @@ type ScheduleLog struct {
 	OriLongitude  float64 `bson:"oriLongitude"`
 	DestLatitude  float64 `bson:"destLatitude"`
 	DestLongitude float64 `bson:"destLongitude"`
+	Date          string  `bson:"date"`
 	CheckTime     string  `bson:"checkTime"`
 }
 
 type ScheduleLogRepository interface {
+	GetUpcomingSchedules() ([]int, error)
 	InsertScheduleLog(scheduleLog *ScheduleLog) error
+	DeleteScheduleLog(groupId int) error
 }

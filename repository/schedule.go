@@ -28,12 +28,14 @@ type Counter struct {
 }
 
 type ScheduleRepository interface {
-	GetFirstSchedule(gId string, date string) (string, error)
 	GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, depTime string) (string, error)
+	GetFirstSchedule(gId string, date string) (string, error)
 	GetNextGroupId() (int, error)
 	InsertSchedule(schedule *Schedule) error
 	GetAllSchedules(gId string, date string) ([]*Schedule, error)
 	GetScheduleById(id string) (*Schedule, error)
+	GetSchedulesByGroupId(groupId int) ([]*Schedule, error)
 	UpdateSchedule(id string, schedule *Schedule) error
+	UpdateScheduleTime(id string, startTime string, endTime string) error
 	DeleteSchedule(groupId int) error
 }

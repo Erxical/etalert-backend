@@ -58,9 +58,81 @@ func (s *scheduleService) StartCronJob() {
 	c := cron.New()
 	c.AddFunc("@every 1m", func() {
 		fmt.Println("Checking upcoming schedules...")
-		// s.checkUpcomingSchedules()
+		s.autoUpdateSchedules()
 	})
 	c.Start()
+}
+
+func (s *scheduleService) autoUpdateSchedules() {
+	groupIds, err := s.scheduleLogRepo.GetUpcomingSchedules()
+	if err != nil {
+		log.Printf("Failed to get upcoming schedules: %v", err)
+	}
+	for _, groupId := range groupIds {
+		schedules, err := s.scheduleRepo.GetSchedulesByGroupId(groupId)
+		newStartTime := schedules[0].StartTime
+		newEndTime := newStartTime
+		schedules = schedules[1:]
+		if err != nil {
+			log.Printf("Failed to get schedules by group ID: %v", err)
+		}
+		for _, schedule := range schedules {
+			if schedule.IsUpdated {
+				break
+			}
+			if schedule.IsTraveling {
+				travelTimeText, err := s.scheduleRepo.GetTravelTime(
+					fmt.Sprintf("%f", schedule.OriLatitude),
+					fmt.Sprintf("%f", schedule.OriLongitude),
+					fmt.Sprintf("%f", schedule.DestLatitude),
+					fmt.Sprintf("%f", schedule.DestLongitude),
+					"now",
+				)
+				if err != nil {
+					log.Printf("Failed to get travel time: %v", err)
+					return
+				}
+
+				startTime, err := time.Parse("15:04", newStartTime)
+				if err != nil {
+					log.Printf("failed to parse start time: %v", err)
+				}
+
+				travelDuration, err := parseDuration(travelTimeText)
+				if err != nil {
+					log.Printf("failed to parse travel duration: %v", err)
+				}
+
+				newEndTime = newStartTime
+				newStartTime = startTime.Add(-travelDuration).Format("15:04")
+
+				err = s.scheduleRepo.UpdateScheduleTime(schedule.Id, newStartTime, newEndTime)
+				if err != nil {
+					log.Printf("Failed to update schedule time: %v", err)
+				}
+				log.Printf("Updated schedule time for %s from user %s", schedule.Name, schedule.GoogleId)
+			} else {
+				startTime, err := time.Parse("15:04", schedule.StartTime)
+				if err != nil {
+					log.Printf("failed to parse start time: %v", err)
+				}
+				endTime, err := time.Parse("15:04", schedule.EndTime)
+				if err != nil {
+					log.Printf("failed to parse end time: %v", err)
+				}
+				duration := endTime.Sub(startTime)
+
+				newEndTime = newStartTime
+				newStartTime = startTime.Add(-duration).Format("15:04")
+
+				err = s.scheduleRepo.UpdateScheduleTime(schedule.Id, newStartTime, newEndTime)
+				if err != nil {
+					log.Printf("Failed to update schedule time: %v", err)
+				}
+				log.Printf("Updated schedule time for %s from user %s", schedule.Name, schedule.GoogleId)
+			}
+		}
+	}
 }
 
 func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error) {
@@ -140,7 +212,6 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse travel duration: %v", err)
 	}
-	travelDuration += 15 * time.Minute
 	leaveTime := startTime.Add(-travelDuration)
 
 	leaveSchedule := &repository.Schedule{
@@ -174,6 +245,7 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 		OriLongitude:  schedule.OriLongitude,
 		DestLatitude:  schedule.DestLatitude,
 		DestLongitude: schedule.DestLongitude,
+		Date:          schedule.Date,
 		CheckTime:     leaveTime.Add(-travelDuration).Format("15:04"),
 	}
 
@@ -248,11 +320,6 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 		return "", fmt.Errorf("failed to parse predefined bedtime: %v", err)
 	}
 
-	// Compare the predefined bedtime with the auto-calculated bedtime
-	if bedtimeStartTime.Before(predefinedBedtimeTime) {
-		return "(auto-calculated bedtime is earlier than the predefined bedtime)", nil
-	}
-
 	bedtimeSchedule := &repository.Schedule{
 		GoogleId:        schedule.GoogleId,
 		Name:            "Wake up",
@@ -267,10 +334,14 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 	}
 
 	err = s.scheduleRepo.InsertSchedule(bedtimeSchedule)
-
 	if err != nil {
 		log.Printf("Failed to insert bedtime schedule: %v", err) // Log and continue
 		return "", fmt.Errorf("failed to insert bedtime schedule: %v", err)
+	}
+
+	// Compare the predefined bedtime with the auto-calculated bedtime
+	if bedtimeStartTime.Before(predefinedBedtimeTime) {
+		return "(auto-calculated bedtime is earlier than the predefined bedtime)", nil
 	}
 
 	return "", nil
@@ -417,7 +488,6 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 				if err != nil {
 					return fmt.Errorf("failed to parse travel duration: %v", err)
 				}
-				travelDuration += 15 * time.Minute
 
 				leaveTime := startTime.Add(-travelDuration).Add(duration)
 				currentStartTime = leaveTime
@@ -464,6 +534,11 @@ func (s *scheduleService) DeleteSchedule(groupId string) error {
 	err = s.scheduleRepo.DeleteSchedule(id)
 	if err != nil {
 		return fmt.Errorf("failed to delete schedule: %v", err)
+	}
+
+	err = s.scheduleLogRepo.DeleteScheduleLog(id)
+	if err != nil {
+		return fmt.Errorf("failed to delete schedule log: %v", err)
 	}
 	return nil
 }

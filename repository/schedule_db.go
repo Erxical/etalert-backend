@@ -164,6 +164,36 @@ func (s *scheduleRepositoryDB) GetScheduleById(id string) (*Schedule, error) {
 	return &schedule, nil
 }
 
+func (s *scheduleRepositoryDB) GetSchedulesByGroupId(groupId int) ([]*Schedule, error) {
+	ctx := context.Background()
+	var schedules []*Schedule
+
+	filter := bson.M{"groupId": groupId}
+
+	cursor, err := s.collection.Find(ctx, filter, options.Find().SetSort(bson.D{
+		{Key: "date", Value: 1},
+		{Key: "startTime", Value: -1},
+	}))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var schedule Schedule
+		if err := cursor.Decode(&schedule); err != nil {
+			return nil, err
+		}
+		schedules = append(schedules, &schedule)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return schedules, nil
+}
+
 func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) error {
 	ctx := context.Background()
 
@@ -179,6 +209,29 @@ func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) err
 		"startTime":     schedule.StartTime,
 		"endTime":       schedule.EndTime,
 		"isHaveEndTime": schedule.IsHaveEndTime,
+	},
+	}
+
+	_, err = s.collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
+func (s *scheduleRepositoryDB) UpdateScheduleTime(id string, startTime string, endTime string) error {
+	ctx := context.Background()
+
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return fmt.Errorf("failed to convert ID: %v", err)
+	}
+	
+	filter := bson.M{
+		"_id": (objectId),
+	}
+
+	update := bson.M{"$set": bson.M{
+		"startTime": startTime,
+		"endTime":   endTime,
+		"isUpdated": true,
 	},
 	}
 
