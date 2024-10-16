@@ -265,17 +265,13 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 	if schedule == nil {
 		return "", fmt.Errorf("schedule cannot be nil")
 	}
-	firstStartTime, err := s.scheduleRepo.GetFirstSchedule(schedule.GoogleId, schedule.Date)
-	if err != nil {
-		return "", fmt.Errorf("failed to get first schedule start time: %v", err)
-	}
 
 	routines, err := s.routineRepo.GetAllRoutines(schedule.GoogleId)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch user routines: %v", err)
 	}
 
-	currentStartTime, err := time.Parse("15:04", firstStartTime)
+	currentStartTime, err := time.Parse("15:04", schedule.StartTime)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse first schedule start time: %v", err)
 	}

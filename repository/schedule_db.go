@@ -74,27 +74,6 @@ func (s *scheduleRepositoryDB) GetTravelTime(oriLat string, oriLong string, dest
 	return element.Duration.Text, nil
 }
 
-func (s *scheduleRepositoryDB) GetFirstSchedule(googleId string, date string) (string, error) {
-	ctx := context.Background()
-	var schedule Schedule
-
-	// Define filter to match the date and Google ID
-	filter := bson.M{"googleId": googleId, "date": date}
-
-	// Find the first schedule of the day sorted by StartTime
-	opts := options.FindOne().SetSort(bson.D{{Key: "startTime", Value: 1}}) // Sort by startTime in ascending order
-
-	err := s.collection.FindOne(ctx, filter, opts).Decode(&schedule)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return "", fmt.Errorf("no schedules found for the given date")
-		}
-		return "", fmt.Errorf("failed to retrieve first schedule: %v", err)
-	}
-
-	return schedule.StartTime, nil
-}
-
 func (s *scheduleRepositoryDB) GetNextGroupId() (int, error) {
 	var counter Counter
 	ctx := context.Background()

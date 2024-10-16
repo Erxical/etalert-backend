@@ -29,7 +29,6 @@ type Counter struct {
 
 type ScheduleRepository interface {
 	GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, depTime string) (string, error)
-	GetFirstSchedule(gId string, date string) (string, error)
 	GetNextGroupId() (int, error)
 	InsertSchedule(schedule *Schedule) error
 	GetAllSchedules(gId string, date string) ([]*Schedule, error)
