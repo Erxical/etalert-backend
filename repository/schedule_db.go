@@ -86,6 +86,61 @@ func (s *scheduleRepositoryDB) GetNextGroupId() (int, error) {
 	return counter.Seq, nil
 }
 
+func (s *scheduleRepositoryDB) GetNextRecurrenceId() (int, error) {
+	var counter Counter
+	ctx := context.Background()
+	err := s.collection.FindOneAndUpdate(ctx, bson.M{"_id": "recurrenceId"}, bson.M{"$inc": bson.M{"seq": 1}}, options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)).Decode(&counter)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to get next recurrenceId: %v", err)
+	}
+
+	return counter.Seq, nil
+}
+
+func (s *scheduleRepositoryDB) CalculateNextRecurrenceDate(currentDate, recurrence string, count int) ([]string, error) {
+	layout := "02-01-2006"
+	date, err := time.Parse(layout, currentDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse start date: %v", err)
+	}
+
+	var dates []string
+	for i := 0; i < count; i++ {
+		var nextDate time.Time
+		switch recurrence {
+		case "daily":
+			nextDate = date.AddDate(0, 0, i)
+		case "weekly":
+			nextDate = date.AddDate(0, 0, i*7)
+		case "monthly":
+			nextDate = date.AddDate(0, i, 0)
+		case "yearly":
+			nextDate = date.AddDate(i, 0, 0)
+		default:
+			return nil, fmt.Errorf("invalid recurrence type: %v", recurrence)
+		}
+		dates = append(dates, nextDate.Format(layout))
+	}
+	return dates, nil
+}
+
+func (r *scheduleRepositoryDB) BatchInsertSchedules(schedules []Schedule) error {
+	ctx := context.Background()
+	var docs []interface{}
+	for _, schedule := range schedules {
+		docs = append(docs, schedule)
+	}
+
+	opts := options.InsertMany().SetOrdered(false)
+
+	_, err := r.collection.InsertMany(ctx, docs, opts)
+	if err != nil {
+		return fmt.Errorf("failed to batch insert schedules: %v", err)
+	}
+	return nil
+}
+
 func (s *scheduleRepositoryDB) InsertSchedule(schedule *Schedule) error {
 	ctx := context.Background()
 	_, err := s.collection.InsertOne(ctx, schedule)
@@ -202,7 +257,7 @@ func (s *scheduleRepositoryDB) UpdateScheduleTime(id string, startTime string, e
 	if err != nil {
 		return fmt.Errorf("failed to convert ID: %v", err)
 	}
-	
+
 	filter := bson.M{
 		"_id": (objectId),
 	}
@@ -221,6 +276,14 @@ func (s *scheduleRepositoryDB) UpdateScheduleTime(id string, startTime string, e
 func (s *scheduleRepositoryDB) DeleteSchedule(groupId int) error {
 	ctx := context.Background()
 	filter := bson.M{"groupId": groupId}
+
+	_, err := s.collection.DeleteMany(ctx, filter)
+	return err
+}
+
+func (s *scheduleRepositoryDB) DeleteScheduleByRecurrenceId(recurrenceId int) error {
+	ctx := context.Background()
+	filter := bson.M{"recurrenceId": recurrenceId}
 
 	_, err := s.collection.DeleteMany(ctx, filter)
 	return err

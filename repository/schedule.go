@@ -15,21 +15,27 @@ type Schedule struct {
 	DestLatitude    float64 `bson:"destLatitude"`
 	DestLongitude   float64 `bson:"destLongitude"`
 	GroupId         int     `bson:"groupId"`
-	Priority		int     `bson:"priority"`
+	Priority        int     `bson:"priority"`
 	IsHaveLocation  bool    `bson:"isHaveLocation"`
 	IsFirstSchedule bool    `bson:"isFirstSchedule"`
 	IsTraveling     bool    `bson:"isTraveling"`
 	IsUpdated       bool    `bson:"isUpdated"`
+
+	Recurrence      string  `bson:"recurrence"`
+	RecurrenceId    int     `bson:"recurrenceId"`
 }
 
 type Counter struct {
-    ID  string `bson:"_id,omitempty"`
-    Seq int    `bson:"seq"`
+	ID  string `bson:"_id,omitempty"`
+	Seq int    `bson:"seq"`
 }
 
 type ScheduleRepository interface {
 	GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, depTime string) (string, error)
 	GetNextGroupId() (int, error)
+	GetNextRecurrenceId() (int, error)
+	CalculateNextRecurrenceDate(currentDate, recurrence string, count int) ([]string, error)
+	BatchInsertSchedules(schedules []Schedule) error
 	InsertSchedule(schedule *Schedule) error
 	GetAllSchedules(gId string, date string) ([]*Schedule, error)
 	GetScheduleById(id string) (*Schedule, error)
@@ -37,4 +43,5 @@ type ScheduleRepository interface {
 	UpdateSchedule(id string, schedule *Schedule) error
 	UpdateScheduleTime(id string, startTime string, endTime string) error
 	DeleteSchedule(groupId int) error
+	DeleteScheduleByRecurrenceId(recurrenceId int) error
 }

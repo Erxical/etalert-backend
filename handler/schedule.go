@@ -29,6 +29,9 @@ type createScheduleRequest struct {
 	Priority        int     `json:"priority"`
 	IsHaveLocation  bool    `json:"isHaveLocation"`
 	IsFirstSchedule bool    `json:"isFirstSchedule"`
+
+	Recurrence      string  `json:"recurrence"`
+	RecurrenceId    int     `json:"recurrenceId"`
 }
 
 type updateScheduleRequest struct {
@@ -73,6 +76,20 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 		Priority:        req.Priority,
 		IsHaveLocation:  req.IsHaveLocation,
 		IsFirstSchedule: req.IsFirstSchedule,
+
+		Recurrence:      req.Recurrence,
+	}
+
+	if schedule.Recurrence != "none" {
+		str, err := h.schedulesrv.InsertRecurrenceSchedule(schedule)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to insert schedule"})
+		}
+		if str != "" {
+			return c.Status(fiber.StatusCreated).JSON(createScheduleResponse{Message: "Schedule created successfully with warning " + str})
+		}
+	
+		return c.Status(fiber.StatusCreated).JSON(createScheduleResponse{Message: "Schedule created successfully"})
 	}
 
 	str, err := h.schedulesrv.InsertSchedule(schedule)
@@ -96,7 +113,6 @@ func (h *ScheduleHandler) GetAllSchedules(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get schedule"})
 	}
 	if len(schedules) == 0 {
-		// return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Schedule not found"})
 		return c.JSON([]interface{}{})
 	}
 	return c.JSON(schedules)
@@ -147,6 +163,17 @@ func (h *ScheduleHandler) DeleteSchedule(c *fiber.Ctx) error {
 	groupId := c.Params("groupId")
 
 	err := h.schedulesrv.DeleteSchedule(groupId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete schedule"})
+	}
+
+	return c.JSON(createScheduleResponse{Message: "Schedule deleted successfully"})
+}
+
+func (h *ScheduleHandler) DeleteScheduleByRecurrenceId(c *fiber.Ctx) error {
+	recurrenceId := c.Params("recurrenceId")
+
+	err := h.schedulesrv.DeleteScheduleByRecurrenceId(recurrenceId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete schedule"})
 	}

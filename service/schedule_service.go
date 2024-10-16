@@ -7,6 +7,7 @@ import (
 	"log"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -165,6 +166,9 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
 		IsUpdated:       false,
+
+		Recurrence:   schedule.Recurrence,
+		RecurrenceId: schedule.RecurrenceId,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to insert schedule: %v", err)
@@ -245,6 +249,7 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 
 	scheduleLog := &repository.ScheduleLog{
 		GroupId:       schedule.GroupId,
+		RecurrenceId:  schedule.RecurrenceId,
 		OriLatitude:   schedule.OriLatitude,
 		OriLongitude:  schedule.OriLongitude,
 		DestLatitude:  schedule.DestLatitude,
@@ -347,6 +352,252 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 	return "", nil
 }
 
+func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (string, error) {
+	recurrenceId, err := s.scheduleRepo.GetNextRecurrenceId()
+	if err != nil {
+		return "", fmt.Errorf("failed to get next recurrence ID: %v", err)
+	}
+	schedule.RecurrenceId = recurrenceId
+
+	var recurrenceCount int
+	switch schedule.Recurrence {
+	case "daily":
+		recurrenceCount = 365 // One year of daily schedules
+	case "weekly":
+		recurrenceCount = 52 // One year of weekly schedules
+	case "monthly":
+		recurrenceCount = 12 // One year of monthly schedules
+	case "yearly":
+		recurrenceCount = 5 // 5 years of yearly schedules
+	default:
+		return "", fmt.Errorf("invalid recurrence type: %v", schedule.Recurrence)
+	}
+
+	dates, err := s.scheduleRepo.CalculateNextRecurrenceDate(schedule.Date, schedule.Recurrence, recurrenceCount)
+	if err != nil {
+		return "", err
+	}
+
+	var wg sync.WaitGroup
+	errCh := make(chan error, 1)
+	scheduleCh := make(chan []repository.Schedule)
+	logCh := make(chan []repository.ScheduleLog)
+
+	batchSize := 100
+	localSchedules := []repository.Schedule{}
+
+	go func() {
+		defer close(scheduleCh)
+		for batch := range scheduleCh {
+			wg.Add(1)
+			go func(batch []repository.Schedule) {
+				defer wg.Done()
+				err := s.scheduleRepo.BatchInsertSchedules(batch)
+				if err != nil {
+					errCh <- fmt.Errorf("failed to insert batch schedules: %v", err)
+				}
+			}(batch)
+		}
+	}()
+
+	go func() {
+		defer close(logCh)
+		for batch := range logCh {
+			wg.Add(1)
+			go func(batch []repository.ScheduleLog) {
+				defer wg.Done()
+				err := s.scheduleLogRepo.BatchInsertScheduleLogs(batch)
+				if err != nil {
+					errCh <- fmt.Errorf("failed to insert batch schedule logs: %v", err)
+				}
+			}(batch)
+		}
+	}()
+
+	for _, date := range dates {
+		newSchedule := repository.Schedule{
+			GoogleId:        schedule.GoogleId,
+			Name:            schedule.Name,
+			Date:            date,
+			StartTime:       schedule.StartTime,
+			EndTime:         schedule.EndTime,
+			IsHaveEndTime:   schedule.IsHaveEndTime,
+			OriName:         schedule.OriName,
+			OriLatitude:     schedule.OriLatitude,
+			OriLongitude:    schedule.OriLongitude,
+			DestName:        schedule.DestName,
+			DestLatitude:    schedule.DestLatitude,
+			DestLongitude:   schedule.DestLongitude,
+			GroupId:         schedule.GroupId,
+			Priority:        schedule.Priority,
+			IsHaveLocation:  schedule.IsHaveLocation,
+			IsFirstSchedule: schedule.IsFirstSchedule,
+			IsTraveling:     schedule.IsTraveling,
+			IsUpdated:       false,
+			Recurrence:      schedule.Recurrence,
+			RecurrenceId:    schedule.RecurrenceId,
+		}
+
+		localSchedules = append(localSchedules, newSchedule)
+
+		if schedule.IsHaveLocation {
+			wg.Add(1)
+			go func(date string) {
+				defer wg.Done()
+				leaveSchedule, leaveLog, err := s.prepareTravelSchedule(schedule, date)
+				if err != nil {
+					errCh <- fmt.Errorf("failed to prepare travel schedule: %v", err)
+					return
+				}
+				scheduleCh <- []repository.Schedule{*leaveSchedule}
+				logCh <- []repository.ScheduleLog{*leaveLog}
+			}(date)
+		}
+
+		if schedule.IsFirstSchedule {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				routineSchedules, err := s.prepareRoutineSchedules(schedule)
+				if err != nil {
+					errCh <- fmt.Errorf("failed to prepare routine schedules: %v", err)
+					return
+				}
+				// Send routine schedules for batch insertion separately
+				scheduleCh <- routineSchedules
+			}()
+		}
+
+		if len(localSchedules) >= batchSize {
+			scheduleCh <- localSchedules
+			localSchedules = []repository.Schedule{} // Reset the batch
+		}
+	}
+
+	if len(localSchedules) > 0 {
+		scheduleCh <- localSchedules
+	}
+
+	go func() {
+		wg.Wait()
+		close(errCh)
+	}()
+
+	for err := range errCh {
+		if err != nil {
+			return "", err
+		}
+	}
+	return "", nil
+}
+
+func (s *scheduleService) prepareTravelSchedule(schedule *ScheduleInput, date string) (*repository.Schedule, *repository.ScheduleLog, error) {
+	departureTime := schedule.DepartTime
+	if departureTime == "" {
+		departureTime = "now"
+	}
+
+	travelTimeText, err := s.scheduleRepo.GetTravelTime(
+		fmt.Sprintf("%f", schedule.OriLatitude),
+		fmt.Sprintf("%f", schedule.OriLongitude),
+		fmt.Sprintf("%f", schedule.DestLatitude),
+		fmt.Sprintf("%f", schedule.DestLongitude),
+		departureTime,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get travel time: %v", err)
+	}
+
+	startTime, err := time.Parse("15:04", schedule.StartTime)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse start time: %v", err)
+	}
+
+	travelDuration, err := parseDuration(travelTimeText)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse travel duration: %v", err)
+	}
+	leaveTime := startTime.Add(-travelDuration)
+
+	leaveSchedule := &repository.Schedule{
+		GoogleId:        schedule.GoogleId,
+		Name:            "Leave From " + schedule.OriName,
+		Date:            date,
+		StartTime:       leaveTime.Format("15:04"),
+		EndTime:         schedule.StartTime,
+		IsHaveEndTime:   false,
+		OriName:         schedule.OriName,
+		OriLatitude:     schedule.OriLatitude,
+		OriLongitude:    schedule.OriLongitude,
+		DestName:        schedule.DestName,
+		DestLatitude:    schedule.DestLatitude,
+		DestLongitude:   schedule.DestLongitude,
+		GroupId:         schedule.GroupId,
+		IsHaveLocation:  false,
+		IsFirstSchedule: false,
+		IsTraveling:     true,
+		IsUpdated:       false,
+		RecurrenceId:    schedule.RecurrenceId,
+	}
+
+	scheduleLog := &repository.ScheduleLog{
+		GroupId:       schedule.GroupId,
+		RecurrenceId:  schedule.RecurrenceId,
+		OriLatitude:   schedule.OriLatitude,
+		OriLongitude:  schedule.OriLongitude,
+		DestLatitude:  schedule.DestLatitude,
+		DestLongitude: schedule.DestLongitude,
+		Date:          date,
+		CheckTime:     leaveTime.Add(-travelDuration).Format("15:04"),
+	}
+
+	return leaveSchedule, scheduleLog, nil
+}
+
+func (s *scheduleService) prepareRoutineSchedules(schedule *ScheduleInput) ([]repository.Schedule, error) {
+	var routineSchedules []repository.Schedule
+
+	routines, err := s.routineRepo.GetAllRoutines(schedule.GoogleId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user routines: %v", err)
+	}
+
+	currentStartTime, err := time.Parse("15:04", schedule.StartTime)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse first schedule start time: %v", err)
+	}
+
+	for i := len(routines) - 1; i >= 0; i-- {
+		routine := routines[i]
+		routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse routine duration: %v", err)
+		}
+
+		currentEndTime := currentStartTime
+		currentStartTime = currentStartTime.Add(-routineDuration)
+
+		newRoutineSchedule := repository.Schedule{
+			GoogleId:        schedule.GoogleId,
+			Name:            routine.Name,
+			Date:            schedule.Date,
+			StartTime:       currentStartTime.Format("15:04"),
+			EndTime:         currentEndTime.Format("15:04"),
+			GroupId:         schedule.GroupId,
+			IsHaveEndTime:   true,
+			IsHaveLocation:  false,
+			IsFirstSchedule: false,
+			IsTraveling:     false,
+			IsUpdated:       false,
+			RecurrenceId:    schedule.RecurrenceId,
+		}
+
+		routineSchedules = append(routineSchedules, newRoutineSchedule)
+	}
+
+	return routineSchedules, nil
+}
+
 func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error) {
 	schedules, err := s.scheduleRepo.GetAllSchedules(gId, date)
 	if err != nil {
@@ -375,6 +626,8 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 			IsFirstSchedule: schedule.IsFirstSchedule,
 			IsTraveling:     schedule.IsTraveling,
 			IsUpdated:       schedule.IsUpdated,
+
+			Recurrence: schedule.Recurrence,
 		})
 	}
 
@@ -405,6 +658,8 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
+
+		Recurrence: schedule.Recurrence,
 	}, nil
 }
 
@@ -537,6 +792,23 @@ func (s *scheduleService) DeleteSchedule(groupId string) error {
 	}
 
 	err = s.scheduleLogRepo.DeleteScheduleLog(id)
+	if err != nil {
+		return fmt.Errorf("failed to delete schedule log: %v", err)
+	}
+	return nil
+}
+
+func (s *scheduleService) DeleteScheduleByRecurrenceId(recurrenceId string) error {
+	id, err := strconv.Atoi(recurrenceId)
+	if err != nil {
+		return fmt.Errorf("invalid recurrenceId: %v", err)
+	}
+	err = s.scheduleRepo.DeleteScheduleByRecurrenceId(id)
+	if err != nil {
+		return fmt.Errorf("failed to delete schedule: %v", err)
+	}
+
+	err = s.scheduleLogRepo.DeleteScheduleLogByRecurrenceId(id)
 	if err != nil {
 		return fmt.Errorf("failed to delete schedule log: %v", err)
 	}

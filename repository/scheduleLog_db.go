@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -25,12 +26,12 @@ func (s *scheduleLogRepositoryDB) GetUpcomingSchedules() ([]int, error) {
 	now := time.Now().UTC().Add(7 * time.Hour)
 	currentTime := now.Format("15:04")
 	minuteLater := now.Add(1 * time.Minute).Format("15:04")
-    today := now.Format("02-01-2006")
+	today := now.Format("02-01-2006")
 	filter := bson.M{
 		"date": today,
 		"checkTime": bson.M{
 			"$gte": currentTime,
-			"$lt": minuteLater,
+			"$lt":  minuteLater,
 		},
 	}
 
@@ -64,9 +65,32 @@ func (s *scheduleLogRepositoryDB) InsertScheduleLog(scheduleLog *ScheduleLog) er
 	return err
 }
 
+func (r *scheduleLogRepositoryDB) BatchInsertScheduleLogs(schedules []ScheduleLog) error {
+	ctx := context.Background()
+	var docs []interface{}
+	for _, schedule := range schedules {
+		docs = append(docs, schedule)
+	}
+
+	opts := options.InsertMany().SetOrdered(false)
+
+	_, err := r.collection.InsertMany(ctx, docs, opts)
+	if err != nil {
+		return fmt.Errorf("failed to batch insert schedules: %v", err)
+	}
+	return nil
+}
+
 func (s *scheduleLogRepositoryDB) DeleteScheduleLog(groupId int) error {
 	ctx := context.Background()
 	filter := bson.M{"groupId": groupId}
+	_, err := s.collection.DeleteMany(ctx, filter)
+	return err
+}
+
+func (s *scheduleLogRepositoryDB) DeleteScheduleLogByRecurrenceId(recurrenceId int) error {
+	ctx := context.Background()
+	filter := bson.M{"recurrenceId": recurrenceId}
 	_, err := s.collection.DeleteMany(ctx, filter)
 	return err
 }
