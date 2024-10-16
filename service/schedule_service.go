@@ -428,7 +428,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 	startTimeChanged := currentSchedule.StartTime != updatedSchedule.StartTime
 	if startTimeChanged {
 		// Fetch all schedules for the same date, ordered by StartTime
-		allSchedules, err := s.scheduleRepo.GetAllSchedules(currentSchedule.GoogleId, currentSchedule.Date)
+		allSchedules, err := s.scheduleRepo.GetSchedulesByGroupId(currentSchedule.GroupId)
 		if err != nil {
 			return fmt.Errorf("failed to fetch schedules for the day: %v", err)
 		}
