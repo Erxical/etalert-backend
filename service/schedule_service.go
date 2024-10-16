@@ -456,16 +456,16 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 
 		if schedule.IsFirstSchedule {
 			wg.Add(1)
-			go func() {
+			go func(date string) {
 				defer wg.Done()
-				routineSchedules, err := s.prepareRoutineSchedules(schedule)
+				routineSchedules, err := s.prepareRoutineSchedules(schedule, date)
 				if err != nil {
 					errCh <- fmt.Errorf("failed to prepare routine schedules: %v", err)
 					return
 				}
-				// Send routine schedules for batch insertion separately
+
 				scheduleCh <- routineSchedules
-			}()
+			}(date)
 		}
 
 		if len(localSchedules) >= batchSize {
@@ -554,7 +554,7 @@ func (s *scheduleService) prepareTravelSchedule(schedule *ScheduleInput, date st
 	return leaveSchedule, scheduleLog, nil
 }
 
-func (s *scheduleService) prepareRoutineSchedules(schedule *ScheduleInput) ([]repository.Schedule, error) {
+func (s *scheduleService) prepareRoutineSchedules(schedule *ScheduleInput, date string) ([]repository.Schedule, error) {
 	var routineSchedules []repository.Schedule
 
 	routines, err := s.routineRepo.GetAllRoutines(schedule.GoogleId)
@@ -580,7 +580,7 @@ func (s *scheduleService) prepareRoutineSchedules(schedule *ScheduleInput) ([]re
 		newRoutineSchedule := repository.Schedule{
 			GoogleId:        schedule.GoogleId,
 			Name:            routine.Name,
-			Date:            schedule.Date,
+			Date:            date,
 			StartTime:       currentStartTime.Format("15:04"),
 			EndTime:         currentEndTime.Format("15:04"),
 			GroupId:         schedule.GroupId,
