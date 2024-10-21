@@ -87,7 +87,7 @@ func main() {
 
 	//Schedule routes
 	protected.Post("/schedules", scheduleHandler.CreateSchedule)
-	protected.Get("/schedules//all/:googleId/:date?", scheduleHandler.GetAllSchedules)
+	protected.Get("/schedules/all/:googleId/:date?", scheduleHandler.GetAllSchedules)
 	protected.Get("/schedules/:id", scheduleHandler.GetScheduleById)
 	protected.Patch("/schedules/:id", scheduleHandler.UpdateSchedule)
 	protected.Delete("/schedules/:groupId", scheduleHandler.DeleteSchedule)
