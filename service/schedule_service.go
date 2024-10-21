@@ -113,12 +113,12 @@ func (s *scheduleService) autoUpdateSchedules() {
 					log.Printf("Failed to update schedule time: %v", err)
 				} else {
 					updateMessage := map[string]interface{}{
-						"id":        schedule.Id,
-						"name":      schedule.Name,
-						"date":      schedule.Date,
-						"startTime": newStartTime,
-						"endTime":   newEndTime,
-						"googleId":  schedule.GoogleId,
+						"id":            schedule.Id,
+						"name":          schedule.Name,
+						"date":          schedule.Date,
+						"startTime":     newStartTime,
+						"endTime":       newEndTime,
+						"isHaveEndTime": schedule.IsHaveEndTime,
 					}
 					message, _ := json.Marshal(updateMessage)
 					websocket.SendUpdate(message)
@@ -147,12 +147,12 @@ func (s *scheduleService) autoUpdateSchedules() {
 					log.Printf("Failed to update schedule time: %v", err)
 				} else {
 					updateMessage := map[string]interface{}{
-						"id":        schedule.Id,
-						"name":      schedule.Name,
-						"date":      schedule.Date,
-						"startTime": newStartTime,
-						"endTime":   newEndTime,
-						"googleId":  schedule.GoogleId,
+						"id":            schedule.Id,
+						"name":          schedule.Name,
+						"date":          schedule.Date,
+						"startTime":     newStartTime,
+						"endTime":       newEndTime,
+						"isHaveEndTime": schedule.IsHaveEndTime,
 					}
 					message, _ := json.Marshal(updateMessage)
 					websocket.SendUpdate(message)
@@ -601,7 +601,6 @@ func (s *scheduleService) prepareRoutineSchedules(schedule *ScheduleInput, date 
 		return []repository.Schedule{}, nil
 	}
 
-
 	currentStartTime, err := time.Parse("15:04", schedule.StartTime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse first schedule start time: %v", err)
@@ -806,6 +805,16 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 			} else {
 				fmt.Printf("Successfully updated schedule: %s\n", sch.Name)
 			}
+			updateMessage := map[string]interface{}{
+				"id":            sch.Id,
+				"name":          sch.Name,
+				"date":          sch.Date,
+				"startTime":     sch.StartTime,
+				"endTime":       sch.EndTime,
+				"isHaveEndTime": sch.IsHaveEndTime,
+			}
+			message, _ := json.Marshal(updateMessage)
+			websocket.SendUpdate(message)
 		}
 	}
 
