@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"etalert-backend/repository"
 	"etalert-backend/websocket"
 	"fmt"
@@ -110,6 +111,17 @@ func (s *scheduleService) autoUpdateSchedules() {
 				err = s.scheduleRepo.UpdateScheduleTime(schedule.Id, newStartTime, newEndTime)
 				if err != nil {
 					log.Printf("Failed to update schedule time: %v", err)
+				} else {
+					updateMessage := map[string]interface{}{
+						"id":        schedule.Id,
+						"name":      schedule.Name,
+						"date":      schedule.Date,
+						"startTime": newStartTime,
+						"endTime":   newEndTime,
+						"googleId":  schedule.GoogleId,
+					}
+					message, _ := json.Marshal(updateMessage)
+					websocket.SendUpdate(message)
 				}
 				log.Printf("Updated schedule time for %s from user %s", schedule.Name, schedule.GoogleId)
 			} else {
@@ -133,6 +145,17 @@ func (s *scheduleService) autoUpdateSchedules() {
 				err = s.scheduleRepo.UpdateScheduleTime(schedule.Id, newStartTime, newEndTime)
 				if err != nil {
 					log.Printf("Failed to update schedule time: %v", err)
+				} else {
+					updateMessage := map[string]interface{}{
+						"id":        schedule.Id,
+						"name":      schedule.Name,
+						"date":      schedule.Date,
+						"startTime": newStartTime,
+						"endTime":   newEndTime,
+						"googleId":  schedule.GoogleId,
+					}
+					message, _ := json.Marshal(updateMessage)
+					websocket.SendUpdate(message)
 				}
 				log.Printf("Updated schedule time for %s from user %s", schedule.Name, schedule.GoogleId)
 			}
@@ -775,8 +798,9 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 		return fmt.Errorf("failed to update schedule: %v", err)
 	}
 
-	updateMessage := []byte(fmt.Sprintf("Schedule updated for ID: %s", id))
-	websocket.SendUpdate(updateMessage)
+	updateMessage := updatedSchedule
+	message, _ := json.Marshal(updateMessage)
+	websocket.SendUpdate(message)
 
 	return nil
 }
