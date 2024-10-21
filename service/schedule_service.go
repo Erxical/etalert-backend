@@ -451,6 +451,7 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 			return "", fmt.Errorf("failed to get next group ID: %v", err)
 		}
 		schedule.GroupId = groupId
+		
 
 		newSchedule := repository.Schedule{
 			GoogleId:        schedule.GoogleId,
@@ -476,33 +477,30 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 		}
 
 		localSchedules = append(localSchedules, newSchedule)
+		newStartTime := newSchedule.StartTime
 
 		if schedule.IsHaveLocation {
-			wg.Add(1)
-			go func(date string) {
-				defer wg.Done()
-				leaveSchedule, leaveLog, err := s.prepareTravelSchedule(schedule, date)
-				if err != nil {
-					errCh <- fmt.Errorf("failed to prepare travel schedule: %v", err)
-					return
-				}
-				scheduleCh <- []repository.Schedule{*leaveSchedule}
-				logCh <- []repository.ScheduleLog{*leaveLog}
-			}(date)
+			leaveSchedule, leaveLog, err := s.prepareTravelSchedule(schedule, date, newStartTime)
+			if err != nil {
+				errCh <- fmt.Errorf("failed to prepare travel schedule: %v", err)
+				return "", err
+			}
+			newStartTime = leaveSchedule.StartTime
+			scheduleCh <- []repository.Schedule{*leaveSchedule}
+			logCh <- []repository.ScheduleLog{*leaveLog}
 		}
 
 		if schedule.IsFirstSchedule {
 			wg.Add(1)
-			go func(date string) {
+			go func(date string, newStartTime string) {
 				defer wg.Done()
-				routineSchedules, err := s.prepareRoutineSchedules(schedule, date)
+				routineSchedules, err := s.prepareRoutineSchedules(schedule, date, newStartTime)
 				if err != nil {
 					errCh <- fmt.Errorf("failed to prepare routine schedules: %v", err)
 					return
 				}
-
 				scheduleCh <- routineSchedules
-			}(date)
+			}(date, newStartTime)
 		}
 
 		if len(localSchedules) >= batchSize {
@@ -528,7 +526,7 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 	return "", nil
 }
 
-func (s *scheduleService) prepareTravelSchedule(schedule *ScheduleInput, date string) (*repository.Schedule, *repository.ScheduleLog, error) {
+func (s *scheduleService) prepareTravelSchedule(schedule *ScheduleInput, date string, mainStartTime string) (*repository.Schedule, *repository.ScheduleLog, error) {
 	departureTime := schedule.DepartTime
 	if departureTime == "" {
 		departureTime = "now"
@@ -545,7 +543,7 @@ func (s *scheduleService) prepareTravelSchedule(schedule *ScheduleInput, date st
 		return nil, nil, fmt.Errorf("failed to get travel time: %v", err)
 	}
 
-	startTime, err := time.Parse("15:04", schedule.StartTime)
+	mainStartTimeParsed, err := time.Parse("15:04", mainStartTime)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse start time: %v", err)
 	}
@@ -554,14 +552,15 @@ func (s *scheduleService) prepareTravelSchedule(schedule *ScheduleInput, date st
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse travel duration: %v", err)
 	}
-	leaveTime := startTime.Add(-travelDuration)
+
+	leaveTime := mainStartTimeParsed.Add(-travelDuration)
 
 	leaveSchedule := &repository.Schedule{
 		GoogleId:        schedule.GoogleId,
 		Name:            "Leave From " + schedule.OriName,
 		Date:            date,
 		StartTime:       leaveTime.Format("15:04"),
-		EndTime:         schedule.StartTime,
+		EndTime:         mainStartTime,
 		IsHaveEndTime:   false,
 		OriName:         schedule.OriName,
 		OriLatitude:     schedule.OriLatitude,
@@ -585,13 +584,13 @@ func (s *scheduleService) prepareTravelSchedule(schedule *ScheduleInput, date st
 		DestLatitude:  schedule.DestLatitude,
 		DestLongitude: schedule.DestLongitude,
 		Date:          date,
-		CheckTime:     leaveTime.Add(-travelDuration).Format("15:04"),
+		CheckTime:     leaveTime.Format("15:04"),
 	}
 
 	return leaveSchedule, scheduleLog, nil
 }
 
-func (s *scheduleService) prepareRoutineSchedules(schedule *ScheduleInput, date string) ([]repository.Schedule, error) {
+func (s *scheduleService) prepareRoutineSchedules(schedule *ScheduleInput, date string, leaveStartTime string) ([]repository.Schedule, error) {
 	var routineSchedules []repository.Schedule
 
 	routines, err := s.routineRepo.GetAllRoutines(schedule.GoogleId)
@@ -603,9 +602,9 @@ func (s *scheduleService) prepareRoutineSchedules(schedule *ScheduleInput, date 
 		return []repository.Schedule{}, nil
 	}
 
-	currentStartTime, err := time.Parse("15:04", schedule.StartTime)
+	currentStartTime, err := time.Parse("15:04", leaveStartTime)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse first schedule start time: %v", err)
+		return nil, fmt.Errorf("failed to parse leave start time: %v", err)
 	}
 
 	for i := len(routines) - 1; i >= 0; i-- {
