@@ -438,6 +438,12 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 	}()
 
 	for _, date := range dates {
+		groupId, err := s.scheduleRepo.GetNextGroupId()
+		if err != nil {
+			return "", fmt.Errorf("failed to get next group ID: %v", err)
+		}
+		schedule.GroupId = groupId
+		
 		newSchedule := repository.Schedule{
 			GoogleId:        schedule.GoogleId,
 			Name:            schedule.Name,
