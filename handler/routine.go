@@ -59,7 +59,7 @@ func (h *RoutineHandler) GetAllRoutines(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get routine"})
 	}
 	if routine == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Routine not found"})
+		return c.JSON([]interface{}{})
 	}
 	return c.JSON(routine)
 }
