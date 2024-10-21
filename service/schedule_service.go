@@ -244,13 +244,15 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 		return fmt.Errorf("failed to parse travel duration: %v", err)
 	}
 	leaveTime := startTime.Add(-travelDuration)
+	arriveTime := startTime
+	schedule.StartTime = leaveTime.Format("15:04")
 
 	leaveSchedule := &repository.Schedule{
 		GoogleId:        schedule.GoogleId,
 		Name:            "Leave From " + schedule.OriName,
 		Date:            schedule.Date,
-		StartTime:       leaveTime.Format("15:04"),
-		EndTime:         schedule.StartTime,
+		StartTime:       schedule.StartTime,
+		EndTime:         arriveTime.Format("15:04"),
 		IsHaveEndTime:   false,
 		OriName:         schedule.OriName,
 		OriLatitude:     schedule.OriLatitude,
