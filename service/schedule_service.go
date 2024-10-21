@@ -1,24 +1,28 @@
 package service
 
 import (
+	"encoding/json"
 	"etalert-backend/repository"
+	"etalert-backend/websocket"
 	"fmt"
 	"log"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/robfig/cron/v3"
 )
 
 type scheduleService struct {
-	scheduleRepo repository.ScheduleRepository
-	routineRepo  repository.RoutineRepository
-	bedtimeRepo  repository.BedtimeRepository
+	scheduleRepo    repository.ScheduleRepository
+	scheduleLogRepo repository.ScheduleLogRepository
+	routineRepo     repository.RoutineRepository
+	bedtimeRepo     repository.BedtimeRepository
 }
 
-func NewScheduleService(scheduleRepo repository.ScheduleRepository, routineRepo repository.RoutineRepository, bedTimeRepo repository.BedtimeRepository) ScheduleService {
-	return &scheduleService{scheduleRepo: scheduleRepo, routineRepo: routineRepo, bedtimeRepo: bedTimeRepo}
+func NewScheduleService(scheduleRepo repository.ScheduleRepository, scheduleLogRepo repository.ScheduleLogRepository, routineRepo repository.RoutineRepository, bedTimeRepo repository.BedtimeRepository) ScheduleService {
+	return &scheduleService{scheduleRepo: scheduleRepo, scheduleLogRepo: scheduleLogRepo, routineRepo: routineRepo, bedtimeRepo: bedTimeRepo}
 }
 
 func parseDuration(durationText string) (time.Duration, error) {
@@ -56,146 +60,113 @@ func (s *scheduleService) StartCronJob() {
 	c := cron.New()
 	c.AddFunc("@every 1m", func() {
 		fmt.Println("Checking upcoming schedules...")
-		s.checkUpcomingSchedules()
+		s.autoUpdateSchedules()
 	})
 	c.Start()
 }
 
-func (s *scheduleService) checkUpcomingSchedules() {
-	currentTime := time.Now()
-	nextHour := currentTime.Add(1 * time.Hour)
-
-	// Query schedules that are traveling, have startTime within the next hour, and aren't yet updated
-	schedules, err := s.scheduleRepo.GetUpcomingTravelSchedules(currentTime, nextHour)
+func (s *scheduleService) autoUpdateSchedules() {
+	groupIds, err := s.scheduleLogRepo.GetUpcomingSchedules()
 	if err != nil {
-		log.Printf("Error querying upcoming travel schedules: %v", err)
-		return
+		log.Printf("Failed to get upcoming schedules: %v", err)
 	}
+	for _, groupId := range groupIds {
+		schedules, err := s.scheduleRepo.GetSchedulesByGroupId(groupId)
+		newStartTime := schedules[0].StartTime
+		newEndTime := newStartTime
+		schedules = schedules[1:]
+		if err != nil {
+			log.Printf("Failed to get schedules by group ID: %v", err)
+		}
+		for _, schedule := range schedules {
+			if schedule.IsUpdated {
+				break
+			}
+			if schedule.IsTraveling {
+				travelTimeText, err := s.scheduleRepo.GetTravelTime(
+					fmt.Sprintf("%f", schedule.OriLatitude),
+					fmt.Sprintf("%f", schedule.OriLongitude),
+					fmt.Sprintf("%f", schedule.DestLatitude),
+					fmt.Sprintf("%f", schedule.DestLongitude),
+					"now",
+				)
+				if err != nil {
+					log.Printf("Failed to get travel time: %v", err)
+					return
+				}
 
-	// For each upcoming travel schedule, recalculate travel time
-	for _, schedule := range schedules {
-		fmt.Println(schedule)
-		if !schedule.IsUpdated { // Only update if not already updated
-			err := s.recalculateAndUpdateSchedule(schedule)
-			if err != nil {
-				log.Printf("Failed to update schedule %v: %v", schedule.GoogleId, err)
+				startTime, err := time.Parse("15:04", newStartTime)
+				if err != nil {
+					log.Printf("failed to parse start time: %v", err)
+				}
+
+				travelDuration, err := parseDuration(travelTimeText)
+				if err != nil {
+					log.Printf("failed to parse travel duration: %v", err)
+				}
+
+				newEndTime = newStartTime
+				newStartTime = startTime.Add(-travelDuration).Format("15:04")
+
+				err = s.scheduleRepo.UpdateScheduleTime(schedule.Id, newStartTime, newEndTime)
+				if err != nil {
+					log.Printf("Failed to update schedule time: %v", err)
+				} else {
+					updateMessage := map[string]interface{}{
+						"id":        schedule.Id,
+						"name":      schedule.Name,
+						"date":      schedule.Date,
+						"startTime": newStartTime,
+						"endTime":   newEndTime,
+						"googleId":  schedule.GoogleId,
+					}
+					message, _ := json.Marshal(updateMessage)
+					websocket.SendUpdate(message)
+				}
+				log.Printf("Updated schedule time for %s from user %s", schedule.Name, schedule.GoogleId)
+			} else {
+				startTime, err := time.Parse("15:04", schedule.StartTime)
+				if err != nil {
+					log.Printf("failed to parse start time: %v", err)
+				}
+				endTime := startTime.Add(5 * time.Minute)
+				if schedule.EndTime != "" {
+					endTime, err = time.Parse("15:04", schedule.EndTime)
+					if err != nil {
+						log.Printf("failed to parse end time: %v", err)
+					}
+				}
+				duration := endTime.Sub(startTime)
+
+				newEndTime = newStartTime
+				startTimeForNext, _ := time.Parse("15:04", newStartTime)
+				newStartTime = startTimeForNext.Add(-duration).Format("15:04")
+
+				err = s.scheduleRepo.UpdateScheduleTime(schedule.Id, newStartTime, newEndTime)
+				if err != nil {
+					log.Printf("Failed to update schedule time: %v", err)
+				} else {
+					updateMessage := map[string]interface{}{
+						"id":        schedule.Id,
+						"name":      schedule.Name,
+						"date":      schedule.Date,
+						"startTime": newStartTime,
+						"endTime":   newEndTime,
+						"googleId":  schedule.GoogleId,
+					}
+					message, _ := json.Marshal(updateMessage)
+					websocket.SendUpdate(message)
+				}
+				log.Printf("Updated schedule time for %s from user %s", schedule.Name, schedule.GoogleId)
 			}
 		}
 	}
 }
 
-func (s *scheduleService) recalculateAndUpdateSchedule(schedule *repository.Schedule) error {
-	// Parse the base schedule's original startTime
-	startTime, err := time.Parse("15:04", schedule.EndTime) // Assuming time is in "HH:mm" format
-	if err != nil {
-		return fmt.Errorf("failed to parse base schedule start time: %v", err)
-	}
-
-	fmt.Println(startTime)
-
-	// Step 1: Get the related travel schedule (if it exists)
-	travelSchedule, err := s.scheduleRepo.GetTravelSchedule(schedule.GoogleId, schedule.Date)
-	if err != nil {
-		return fmt.Errorf("failed to fetch travel schedule: %v", err)
-	}
-	if travelSchedule == nil {
-		return fmt.Errorf("no travel schedule found for schedule: %v", schedule.GoogleId)
-	}
-
-	// Step 2: Recalculate the travel time for the travel schedule
-	travelTimeText, err := s.scheduleRepo.GetTravelTime(
-		fmt.Sprintf("%f", travelSchedule.OriLatitude),
-		fmt.Sprintf("%f", travelSchedule.OriLongitude),
-		fmt.Sprintf("%f", travelSchedule.DestLatitude),
-		fmt.Sprintf("%f", travelSchedule.DestLongitude),
-		"now",
-	)
-	if err != nil {
-		return fmt.Errorf("failed to recalculate travel time: %v", err)
-	}
-
-	// Step 3: Parse the recalculated travel duration
-	travelDuration, err := parseDuration(travelTimeText)
-	if err != nil {
-		return fmt.Errorf("failed to parse travel duration: %v", err)
-	}
-
-	fmt.Println(travelDuration)
-
-	// Step 4: Adjust the travel schedule's startTime and endTime
-	newTravelEndTime := startTime                                                      // Travel should end 15 minutes before the base schedule's startTime
-	newTravelStartTime := newTravelEndTime.Add(-(travelDuration + (15 * time.Minute))) // Adjust travel start time based on travel duration
-
-	newTravelEndTimeStr := newTravelEndTime.Format("15:04")
-	newTravelStartTimeStr := newTravelStartTime.Format("15:04")
-
-	fmt.Println(newTravelEndTimeStr, newTravelStartTimeStr)
-
-	// Update the travel schedule's startTime and endTime
-	err = s.scheduleRepo.UpdateTravelScheduleTimes(travelSchedule.GoogleId, newTravelStartTimeStr, newTravelEndTimeStr)
-	if err != nil {
-		return fmt.Errorf("failed to update travel schedule times: %v", err)
-	}
-
-	log.Printf("Updated travel schedule for %v, new start time: %v, new end time: %v", travelSchedule.GoogleId, newTravelStartTimeStr, newTravelEndTimeStr)
-
-	// Step 5: Adjust the base schedule's startTime to match the travel schedule's endTime
-	err = s.scheduleRepo.UpdateScheduleStartTime(schedule.GoogleId, newTravelEndTimeStr)
-	if err != nil {
-		return fmt.Errorf("failed to update base schedule start time: %v", err)
-	}
-
-	// Step 6: If base schedule is the first schedule, adjust previous schedules recursively
-	if schedule.IsFirstSchedule {
-		err = s.adjustPreviousSchedules(schedule.GoogleId, schedule.Date, newTravelStartTime)
-		if err != nil {
-			return fmt.Errorf("failed to adjust previous schedules: %v", err)
-		}
-	}
-
-	return nil
-}
-
-func (s *scheduleService) adjustPreviousSchedules(googleId string, date string, newStartTime time.Time) error {
-	// Find the previous schedule that ends just before the current schedule
-	previousSchedule, err := s.scheduleRepo.GetPreviousSchedule(googleId, date, newStartTime)
-	if err != nil {
-		return fmt.Errorf("failed to fetch previous schedule: %v", err)
-	}
-
-	// If there's no previous schedule, there's nothing to adjust
-	if previousSchedule == nil || previousSchedule.EndTime == "" {
-		return nil
-	}
-
-	previousEndTime, err := time.Parse("15:04", previousSchedule.EndTime)
-	if err != nil {
-		return fmt.Errorf("failed to parse previous schedule end time: %v", err)
-	}
-
-	// Stop recursion if the previous schedule's endTime is already before newStartTime
-	if previousEndTime.Before(newStartTime) {
-		return nil
-	}
-
-	// Adjust the end time of the previous schedule to end right before the new start time
-	newEndTime := newStartTime.Add(-5 * time.Minute) // Adjusting to end 5 minutes before the current schedule's start time
-	err = s.scheduleRepo.UpdateScheduleEndTime(previousSchedule.GoogleId, previousSchedule.Id, newEndTime)
-	if err != nil {
-		return fmt.Errorf("failed to update previous schedule end time: %v", err)
-	}
-
-	// Log the adjustment
-	log.Printf("Updated previous schedule for %v, new end time: %v", previousSchedule.GoogleId, newEndTime)
-
-	// Step 6: Recursively adjust previous schedules if needed
-	return s.adjustPreviousSchedules(previousSchedule.GoogleId, previousSchedule.Date, newEndTime)
-}
-
-func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
+func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error) {
 	groupId, err := s.scheduleRepo.GetNextGroupId()
 	if err != nil {
-		return fmt.Errorf("failed to get next group ID: %v", err)
+		return "", fmt.Errorf("failed to get next group ID: %v", err)
 	}
 	schedule.GroupId = groupId
 
@@ -218,9 +189,12 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
 		IsUpdated:       false,
+
+		Recurrence:   schedule.Recurrence,
+		RecurrenceId: schedule.RecurrenceId,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to insert schedule: %v", err)
+		return "", fmt.Errorf("failed to insert schedule: %v", err)
 	}
 
 	if schedule.IsHaveLocation {
@@ -231,13 +205,15 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) error {
 	}
 
 	if schedule.IsFirstSchedule {
-		err := s.insertRoutineSchedules(schedule)
+		str, err := s.insertRoutineSchedules(schedule)
 		if err != nil {
 			log.Printf("Failed to insert routines: %v", err)
+		} else {
+			return str, nil
 		}
 	}
 
-	return nil
+	return "", nil
 }
 
 func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
@@ -267,14 +243,13 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse travel duration: %v", err)
 	}
-	travelDuration += 15 * time.Minute
-	leaveTime := startTime.Add(-travelDuration).Format("15:04")
+	leaveTime := startTime.Add(-travelDuration)
 
 	leaveSchedule := &repository.Schedule{
 		GoogleId:        schedule.GoogleId,
-		Name:            "Leave " + schedule.OriName,
+		Name:            "Leave From " + schedule.OriName,
 		Date:            schedule.Date,
-		StartTime:       leaveTime,
+		StartTime:       leaveTime.Format("15:04"),
 		EndTime:         schedule.StartTime,
 		IsHaveEndTime:   false,
 		OriName:         schedule.OriName,
@@ -292,33 +267,48 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 
 	err = s.scheduleRepo.InsertSchedule(leaveSchedule)
 	if err != nil {
-		log.Printf("Failed to insert leave home schedule: %v", err)
 		return fmt.Errorf("failed to insert leave home schedule: %v", err)
 	}
+
+	scheduleLog := &repository.ScheduleLog{
+		GroupId:       schedule.GroupId,
+		RecurrenceId:  schedule.RecurrenceId,
+		OriLatitude:   schedule.OriLatitude,
+		OriLongitude:  schedule.OriLongitude,
+		DestLatitude:  schedule.DestLatitude,
+		DestLongitude: schedule.DestLongitude,
+		Date:          schedule.Date,
+		CheckTime:     leaveTime.Add(-travelDuration).Format("15:04"),
+	}
+
+	err = s.scheduleLogRepo.InsertScheduleLog(scheduleLog)
+	if err != nil {
+		return fmt.Errorf("failed to insert schedule log: %v", err)
+	}
+
 	return nil
 }
 
-func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error {
-	firstStartTime, err := s.scheduleRepo.GetFirstSchedule(schedule.GoogleId, schedule.Date)
-	if err != nil {
-		return fmt.Errorf("failed to get first schedule start time: %v", err)
+func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (string, error) {
+	if schedule == nil {
+		return "", fmt.Errorf("schedule cannot be nil")
 	}
 
 	routines, err := s.routineRepo.GetAllRoutines(schedule.GoogleId)
 	if err != nil {
-		return fmt.Errorf("failed to fetch user routines: %v", err)
+		return "", fmt.Errorf("failed to fetch user routines: %v", err)
 	}
 
-	currentStartTime, err := time.Parse("15:04", firstStartTime)
+	currentStartTime, err := time.Parse("15:04", schedule.StartTime)
 	if err != nil {
-		return fmt.Errorf("failed to parse first schedule start time: %v", err)
+		return "", fmt.Errorf("failed to parse first schedule start time: %v", err)
 	}
 
 	for i := len(routines) - 1; i >= 0; i-- {
 		routine := routines[i]
 		routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
 		if err != nil {
-			return fmt.Errorf("failed to parse routine duration: %v", err)
+			return "", fmt.Errorf("failed to parse routine duration: %v", err)
 		}
 
 		currentEndTime := currentStartTime
@@ -341,7 +331,7 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 		err = s.scheduleRepo.InsertSchedule(newRoutineSchedule)
 		if err != nil {
 			log.Printf("Failed to insert routine schedule: %v", err) // Log and continue
-			return fmt.Errorf("failed to insert routine schedule: %v", err)
+			return "", fmt.Errorf("failed to insert routine schedule: %v", err)
 		}
 	}
 
@@ -349,18 +339,13 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 
 	predefinedBedtime, err := s.bedtimeRepo.GetBedtimeInfo(schedule.GoogleId)
 	if err != nil {
-		return fmt.Errorf("failed to get predefined bedtime: %v", err)
+		return "", fmt.Errorf("failed to get predefined bedtime: %v", err)
 	}
 
 	// Parse the predefined bedtime for comparison
 	predefinedBedtimeTime, err := time.Parse("15:04", predefinedBedtime.WakeTime)
 	if err != nil {
-		return fmt.Errorf("failed to parse predefined bedtime: %v", err)
-	}
-
-	// Compare the predefined bedtime with the auto-calculated bedtime
-	if bedtimeStartTime.Before(predefinedBedtimeTime) {
-		return fmt.Errorf("warning: auto-calculated bedtime is earlier than the predefined bedtime")
+		return "", fmt.Errorf("failed to parse predefined bedtime: %v", err)
 	}
 
 	bedtimeSchedule := &repository.Schedule{
@@ -379,10 +364,267 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) error 
 	err = s.scheduleRepo.InsertSchedule(bedtimeSchedule)
 	if err != nil {
 		log.Printf("Failed to insert bedtime schedule: %v", err) // Log and continue
-		return fmt.Errorf("failed to insert bedtime schedule: %v", err)
+		return "", fmt.Errorf("failed to insert bedtime schedule: %v", err)
 	}
 
-	return nil
+	// Compare the predefined bedtime with the auto-calculated bedtime
+	if bedtimeStartTime.Before(predefinedBedtimeTime) {
+		return "(auto-calculated bedtime is earlier than the predefined bedtime)", nil
+	}
+
+	return "", nil
+}
+
+func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (string, error) {
+	recurrenceId, err := s.scheduleRepo.GetNextRecurrenceId()
+	if err != nil {
+		return "", fmt.Errorf("failed to get next recurrence ID: %v", err)
+	}
+	schedule.RecurrenceId = recurrenceId
+
+	var recurrenceCount int
+	switch schedule.Recurrence {
+	case "daily":
+		recurrenceCount = 365 // One year of daily schedules
+	case "weekly":
+		recurrenceCount = 52 // One year of weekly schedules
+	case "monthly":
+		recurrenceCount = 12 // One year of monthly schedules
+	case "yearly":
+		recurrenceCount = 5 // 5 years of yearly schedules
+	default:
+		return "", fmt.Errorf("invalid recurrence type: %v", schedule.Recurrence)
+	}
+
+	dates, err := s.scheduleRepo.CalculateNextRecurrenceDate(schedule.Date, schedule.Recurrence, recurrenceCount)
+	if err != nil {
+		return "", err
+	}
+
+	var wg sync.WaitGroup
+	errCh := make(chan error, 1)
+	scheduleCh := make(chan []repository.Schedule)
+	logCh := make(chan []repository.ScheduleLog)
+
+	batchSize := 100
+	localSchedules := []repository.Schedule{}
+
+	go func() {
+		defer close(scheduleCh)
+		for batch := range scheduleCh {
+			wg.Add(1)
+			go func(batch []repository.Schedule) {
+				defer wg.Done()
+				err := s.scheduleRepo.BatchInsertSchedules(batch)
+				if err != nil {
+					errCh <- fmt.Errorf("failed to insert batch schedules: %v", err)
+				}
+			}(batch)
+		}
+	}()
+
+	go func() {
+		defer close(logCh)
+		for batch := range logCh {
+			wg.Add(1)
+			go func(batch []repository.ScheduleLog) {
+				defer wg.Done()
+				err := s.scheduleLogRepo.BatchInsertScheduleLogs(batch)
+				if err != nil {
+					errCh <- fmt.Errorf("failed to insert batch schedule logs: %v", err)
+				}
+			}(batch)
+		}
+	}()
+
+	for _, date := range dates {
+		groupId, err := s.scheduleRepo.GetNextGroupId()
+		if err != nil {
+			return "", fmt.Errorf("failed to get next group ID: %v", err)
+		}
+		schedule.GroupId = groupId
+		
+		newSchedule := repository.Schedule{
+			GoogleId:        schedule.GoogleId,
+			Name:            schedule.Name,
+			Date:            date,
+			StartTime:       schedule.StartTime,
+			EndTime:         schedule.EndTime,
+			IsHaveEndTime:   schedule.IsHaveEndTime,
+			OriName:         schedule.OriName,
+			OriLatitude:     schedule.OriLatitude,
+			OriLongitude:    schedule.OriLongitude,
+			DestName:        schedule.DestName,
+			DestLatitude:    schedule.DestLatitude,
+			DestLongitude:   schedule.DestLongitude,
+			GroupId:         schedule.GroupId,
+			Priority:        schedule.Priority,
+			IsHaveLocation:  schedule.IsHaveLocation,
+			IsFirstSchedule: schedule.IsFirstSchedule,
+			IsTraveling:     schedule.IsTraveling,
+			IsUpdated:       false,
+			Recurrence:      schedule.Recurrence,
+			RecurrenceId:    schedule.RecurrenceId,
+		}
+
+		localSchedules = append(localSchedules, newSchedule)
+
+		if schedule.IsHaveLocation {
+			wg.Add(1)
+			go func(date string) {
+				defer wg.Done()
+				leaveSchedule, leaveLog, err := s.prepareTravelSchedule(schedule, date)
+				if err != nil {
+					errCh <- fmt.Errorf("failed to prepare travel schedule: %v", err)
+					return
+				}
+				scheduleCh <- []repository.Schedule{*leaveSchedule}
+				logCh <- []repository.ScheduleLog{*leaveLog}
+			}(date)
+		}
+
+		if schedule.IsFirstSchedule {
+			wg.Add(1)
+			go func(date string) {
+				defer wg.Done()
+				routineSchedules, err := s.prepareRoutineSchedules(schedule, date)
+				if err != nil {
+					errCh <- fmt.Errorf("failed to prepare routine schedules: %v", err)
+					return
+				}
+
+				scheduleCh <- routineSchedules
+			}(date)
+		}
+
+		if len(localSchedules) >= batchSize {
+			scheduleCh <- localSchedules
+			localSchedules = []repository.Schedule{} // Reset the batch
+		}
+	}
+
+	if len(localSchedules) > 0 {
+		scheduleCh <- localSchedules
+	}
+
+	go func() {
+		wg.Wait()
+		close(errCh)
+	}()
+
+	for err := range errCh {
+		if err != nil {
+			return "", err
+		}
+	}
+	return "", nil
+}
+
+func (s *scheduleService) prepareTravelSchedule(schedule *ScheduleInput, date string) (*repository.Schedule, *repository.ScheduleLog, error) {
+	departureTime := schedule.DepartTime
+	if departureTime == "" {
+		departureTime = "now"
+	}
+
+	travelTimeText, err := s.scheduleRepo.GetTravelTime(
+		fmt.Sprintf("%f", schedule.OriLatitude),
+		fmt.Sprintf("%f", schedule.OriLongitude),
+		fmt.Sprintf("%f", schedule.DestLatitude),
+		fmt.Sprintf("%f", schedule.DestLongitude),
+		departureTime,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get travel time: %v", err)
+	}
+
+	startTime, err := time.Parse("15:04", schedule.StartTime)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse start time: %v", err)
+	}
+
+	travelDuration, err := parseDuration(travelTimeText)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse travel duration: %v", err)
+	}
+	leaveTime := startTime.Add(-travelDuration)
+
+	leaveSchedule := &repository.Schedule{
+		GoogleId:        schedule.GoogleId,
+		Name:            "Leave From " + schedule.OriName,
+		Date:            date,
+		StartTime:       leaveTime.Format("15:04"),
+		EndTime:         schedule.StartTime,
+		IsHaveEndTime:   false,
+		OriName:         schedule.OriName,
+		OriLatitude:     schedule.OriLatitude,
+		OriLongitude:    schedule.OriLongitude,
+		DestName:        schedule.DestName,
+		DestLatitude:    schedule.DestLatitude,
+		DestLongitude:   schedule.DestLongitude,
+		GroupId:         schedule.GroupId,
+		IsHaveLocation:  false,
+		IsFirstSchedule: false,
+		IsTraveling:     true,
+		IsUpdated:       false,
+		RecurrenceId:    schedule.RecurrenceId,
+	}
+
+	scheduleLog := &repository.ScheduleLog{
+		GroupId:       schedule.GroupId,
+		RecurrenceId:  schedule.RecurrenceId,
+		OriLatitude:   schedule.OriLatitude,
+		OriLongitude:  schedule.OriLongitude,
+		DestLatitude:  schedule.DestLatitude,
+		DestLongitude: schedule.DestLongitude,
+		Date:          date,
+		CheckTime:     leaveTime.Add(-travelDuration).Format("15:04"),
+	}
+
+	return leaveSchedule, scheduleLog, nil
+}
+
+func (s *scheduleService) prepareRoutineSchedules(schedule *ScheduleInput, date string) ([]repository.Schedule, error) {
+	var routineSchedules []repository.Schedule
+
+	routines, err := s.routineRepo.GetAllRoutines(schedule.GoogleId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user routines: %v", err)
+	}
+
+	currentStartTime, err := time.Parse("15:04", schedule.StartTime)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse first schedule start time: %v", err)
+	}
+
+	for i := len(routines) - 1; i >= 0; i-- {
+		routine := routines[i]
+		routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse routine duration: %v", err)
+		}
+
+		currentEndTime := currentStartTime
+		currentStartTime = currentStartTime.Add(-routineDuration)
+
+		newRoutineSchedule := repository.Schedule{
+			GoogleId:        schedule.GoogleId,
+			Name:            routine.Name,
+			Date:            date,
+			StartTime:       currentStartTime.Format("15:04"),
+			EndTime:         currentEndTime.Format("15:04"),
+			GroupId:         schedule.GroupId,
+			IsHaveEndTime:   true,
+			IsHaveLocation:  false,
+			IsFirstSchedule: false,
+			IsTraveling:     false,
+			IsUpdated:       false,
+			RecurrenceId:    schedule.RecurrenceId,
+		}
+
+		routineSchedules = append(routineSchedules, newRoutineSchedule)
+	}
+
+	return routineSchedules, nil
 }
 
 func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error) {
@@ -412,6 +654,9 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 			IsHaveLocation:  schedule.IsHaveLocation,
 			IsFirstSchedule: schedule.IsFirstSchedule,
 			IsTraveling:     schedule.IsTraveling,
+			IsUpdated:       schedule.IsUpdated,
+
+			Recurrence: schedule.Recurrence,
 		})
 	}
 
@@ -442,6 +687,8 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
+
+		Recurrence: schedule.Recurrence,
 	}, nil
 }
 
@@ -465,7 +712,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 	startTimeChanged := currentSchedule.StartTime != updatedSchedule.StartTime
 	if startTimeChanged {
 		// Fetch all schedules for the same date, ordered by StartTime
-		allSchedules, err := s.scheduleRepo.GetAllSchedules(currentSchedule.GoogleId, currentSchedule.Date)
+		allSchedules, err := s.scheduleRepo.GetSchedulesByGroupId(currentSchedule.GroupId)
 		if err != nil {
 			return fmt.Errorf("failed to fetch schedules for the day: %v", err)
 		}
@@ -525,7 +772,6 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 				if err != nil {
 					return fmt.Errorf("failed to parse travel duration: %v", err)
 				}
-				travelDuration += 15 * time.Minute
 
 				leaveTime := startTime.Add(-travelDuration).Add(duration)
 				currentStartTime = leaveTime
@@ -558,6 +804,10 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 		return fmt.Errorf("failed to update schedule: %v", err)
 	}
 
+	updateMessage := updatedSchedule
+	message, _ := json.Marshal(updateMessage)
+	websocket.SendUpdate(message)
+
 	return nil
 }
 
@@ -569,6 +819,28 @@ func (s *scheduleService) DeleteSchedule(groupId string) error {
 	err = s.scheduleRepo.DeleteSchedule(id)
 	if err != nil {
 		return fmt.Errorf("failed to delete schedule: %v", err)
+	}
+
+	err = s.scheduleLogRepo.DeleteScheduleLog(id)
+	if err != nil {
+		return fmt.Errorf("failed to delete schedule log: %v", err)
+	}
+	return nil
+}
+
+func (s *scheduleService) DeleteScheduleByRecurrenceId(recurrenceId string) error {
+	id, err := strconv.Atoi(recurrenceId)
+	if err != nil {
+		return fmt.Errorf("invalid recurrenceId: %v", err)
+	}
+	err = s.scheduleRepo.DeleteScheduleByRecurrenceId(id)
+	if err != nil {
+		return fmt.Errorf("failed to delete schedule: %v", err)
+	}
+
+	err = s.scheduleLogRepo.DeleteScheduleLogByRecurrenceId(id)
+	if err != nil {
+		return fmt.Errorf("failed to delete schedule log: %v", err)
 	}
 	return nil
 }

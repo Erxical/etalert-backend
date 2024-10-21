@@ -6,8 +6,10 @@ import (
 	"etalert-backend/repository"
 	"etalert-backend/service"
 	"etalert-backend/middlewares"
+	etalert_websocket "etalert-backend/websocket"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/websocket/v2"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -47,14 +49,20 @@ func main() {
 	routineService := service.NewRoutineService(routineRepository)
 	routineHandler := handler.NewRoutineHandler(routineService)
 
+	scheduleLogRepository := repository.NewScheduleLogRepositoryDB(client, "etalert", "scheduleLog")
+
 	scheduleRepository := repository.NewScheduleRepositoryDB(client, "etalert", "schedule")
-	scheduleService := service.NewScheduleService(scheduleRepository, routineRepository, bedtimeRepository)
+	scheduleService := service.NewScheduleService(scheduleRepository, scheduleLogRepository, routineRepository, bedtimeRepository)
 	scheduleHandler := handler.NewScheduleHandler(scheduleService)
 
 	scheduleService.StartCronJob()
 
 	// initialize new instance of fiber
 	server := fiber.New()
+
+	server.Get("/ws", websocket.New(func(c *websocket.Conn) {
+        etalert_websocket.HandleConnections(c)
+    }))
 
 	server.Post("/login", authHandler.Login)
 	server.Post("/refresh-token", authHandler.RefreshToken)
@@ -79,10 +87,13 @@ func main() {
 
 	//Schedule routes
 	protected.Post("/schedules", scheduleHandler.CreateSchedule)
-	protected.Get("/schedules/:googleId/:date?", scheduleHandler.GetAllSchedules)
+	protected.Get("/schedules/all/:googleId/:date?", scheduleHandler.GetAllSchedules)
 	protected.Get("/schedules/:id", scheduleHandler.GetScheduleById)
 	protected.Patch("/schedules/:id", scheduleHandler.UpdateSchedule)
 	protected.Delete("/schedules/:groupId", scheduleHandler.DeleteSchedule)
+	protected.Delete("/schedules/recurrence/:recurrenceId", scheduleHandler.DeleteScheduleByRecurrenceId)
+
+	go etalert_websocket.HandleMessages()
 
 	// listen to port 3000
 	log.Fatal(server.Listen(":3000"))

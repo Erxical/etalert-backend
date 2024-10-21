@@ -24,7 +24,7 @@ func (r *routineRepositoryDB) InsertRoutine(routine *Routine) error {
 
 func (r *routineRepositoryDB) GetAllRoutines(gId string) ([]*Routine, error) {
     ctx := context.Background()
-    var routines []*Routine
+    routines := []*Routine{}
     filter := bson.M{"googleId": gId}
 
     // Use Find to get all matching documents

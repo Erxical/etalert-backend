@@ -20,6 +20,9 @@ type ScheduleInput struct {
 	IsTraveling     bool    `bson:"isTraveling"`
 	IsUpdated       bool    `bson:"isUpdated"`
 	DepartTime      string  `bson:"departTime"`
+
+	Recurrence   string `bson:"recurrence"`
+	RecurrenceId int    `bson:"recurrenceId"`
 }
 
 type ScheduleResponse struct {
@@ -41,6 +44,8 @@ type ScheduleResponse struct {
 	IsFirstSchedule bool    `bson:"isFirstSchedule"`
 	IsTraveling     bool    `bson:"isTraveling"`
 	IsUpdated       bool    `bson:"isUpdated"`
+	
+	Recurrence      string  `bson:"recurrence"`
 }
 
 type ScheduleUpdateInput struct {
@@ -53,9 +58,11 @@ type ScheduleUpdateInput struct {
 
 type ScheduleService interface {
 	StartCronJob()
-	InsertSchedule(schedule *ScheduleInput) error
+	InsertSchedule(schedule *ScheduleInput) (string, error)
+	InsertRecurrenceSchedule(schedule *ScheduleInput) (string, error)
 	GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error)
 	GetScheduleById(id string) (*ScheduleResponse, error)
 	UpdateSchedule(id string, schedule *ScheduleUpdateInput) error
 	DeleteSchedule(groupId string) error
+	DeleteScheduleByRecurrenceId(recurrenceId string) error
 }
