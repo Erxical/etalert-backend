@@ -415,6 +415,9 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 			wg.Add(1)
 			go func(batch []repository.Schedule) {
 				defer wg.Done()
+				if len(batch) == 0 {
+					return
+				}
 				err := s.scheduleRepo.BatchInsertSchedules(batch)
 				if err != nil {
 					errCh <- fmt.Errorf("failed to insert batch schedules: %v", err)
@@ -429,6 +432,9 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 			wg.Add(1)
 			go func(batch []repository.ScheduleLog) {
 				defer wg.Done()
+				if len(batch) == 0 {
+					return
+				}
 				err := s.scheduleLogRepo.BatchInsertScheduleLogs(batch)
 				if err != nil {
 					errCh <- fmt.Errorf("failed to insert batch schedule logs: %v", err)
@@ -443,7 +449,7 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 			return "", fmt.Errorf("failed to get next group ID: %v", err)
 		}
 		schedule.GroupId = groupId
-		
+
 		newSchedule := repository.Schedule{
 			GoogleId:        schedule.GoogleId,
 			Name:            schedule.Name,
@@ -590,6 +596,11 @@ func (s *scheduleService) prepareRoutineSchedules(schedule *ScheduleInput, date 
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch user routines: %v", err)
 	}
+
+	if len(routines) == 0 {
+		return []repository.Schedule{}, nil
+	}
+
 
 	currentStartTime, err := time.Parse("15:04", schedule.StartTime)
 	if err != nil {
