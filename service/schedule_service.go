@@ -662,11 +662,27 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 
 	// Prepare the updated schedule structure
 	updatedSchedule := &repository.Schedule{
-		Name:          schedule.Name,
-		Date:          schedule.Date,
-		StartTime:     schedule.StartTime,
-		EndTime:       schedule.EndTime,
-		IsHaveEndTime: schedule.IsHaveEndTime,
+		Id:              currentSchedule.Id,
+		GoogleId:        currentSchedule.GoogleId,
+		Name:            schedule.Name,
+		Date:            schedule.Date,
+		StartTime:       schedule.StartTime,
+		EndTime:         schedule.EndTime,
+		IsHaveEndTime:   schedule.IsHaveEndTime,
+		OriName:         currentSchedule.OriName,
+		OriLatitude:     currentSchedule.OriLatitude,
+		OriLongitude:    currentSchedule.OriLongitude,
+		DestName:        currentSchedule.DestName,
+		DestLatitude:    currentSchedule.DestLatitude,
+		DestLongitude:   currentSchedule.DestLongitude,
+		GroupId:         currentSchedule.GroupId,
+		Priority:        currentSchedule.Priority,
+		IsHaveLocation:  currentSchedule.IsHaveLocation,
+		IsFirstSchedule: currentSchedule.IsFirstSchedule,
+		IsTraveling:     currentSchedule.IsTraveling,
+		IsUpdated:       false,
+		Recurrence:      currentSchedule.Recurrence,
+		RecurrenceId:    currentSchedule.RecurrenceId,
 	}
 
 	// Check if the start time has changed
@@ -677,6 +693,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 		if err != nil {
 			return fmt.Errorf("failed to fetch schedules for the day: %v", err)
 		}
+		allSchedules = allSchedules[1:]
 
 		// Adjust times from the updated schedule backward
 		// Starting from the end of the list and moving toward the current schedule
@@ -702,7 +719,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 				duration = endTime.Sub(startTime)
 			} else {
 				// Default to a minimal duration if no end time is set
-				duration = 0
+				duration = 5 * time.Minute
 			}
 
 			// Calculate the new end time as the current start time
@@ -744,12 +761,29 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 
 			// Save the adjusted schedule back to the database
 			err = s.scheduleRepo.UpdateSchedule(sch.Id, &repository.Schedule{
-				Name:          sch.Name,
-				Date:          sch.Date,
-				StartTime:     sch.StartTime,
-				EndTime:       sch.EndTime,
-				IsHaveEndTime: sch.IsHaveEndTime,
+				Id:              sch.Id,
+				GoogleId:        sch.GoogleId,
+				Name:            sch.Name,
+				Date:            sch.Date,
+				StartTime:       sch.StartTime,
+				EndTime:         sch.EndTime,
+				IsHaveEndTime:   sch.IsHaveEndTime,
+				OriName:         sch.OriName,
+				OriLatitude:     sch.OriLatitude,
+				OriLongitude:    sch.OriLongitude,
+				DestName:        sch.DestName,
+				DestLatitude:    sch.DestLatitude,
+				DestLongitude:   sch.DestLongitude,
+				GroupId:         sch.GroupId,
+				Priority:        sch.Priority,
+				IsHaveLocation:  sch.IsHaveLocation,
+				IsFirstSchedule: sch.IsFirstSchedule,
+				IsTraveling:     sch.IsTraveling,
+				IsUpdated:       false,
+				Recurrence:      sch.Recurrence,
+				RecurrenceId:    sch.RecurrenceId,
 			})
+
 			if err != nil {
 				fmt.Printf("Failed to adjust schedule times for %s: %v\n", sch.Name, err)
 				return fmt.Errorf("failed to adjust schedule times: %v", err)

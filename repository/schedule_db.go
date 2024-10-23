@@ -238,11 +238,26 @@ func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) err
 	filter := bson.M{"_id": (objectId)}
 
 	update := bson.M{"$set": bson.M{
+		"googleId":      schedule.GoogleId,
 		"name":          schedule.Name,
 		"date":          schedule.Date,
 		"startTime":     schedule.StartTime,
 		"endTime":       schedule.EndTime,
 		"isHaveEndTime": schedule.IsHaveEndTime,
+		"oriName":       schedule.OriName,
+		"oriLatitude":   schedule.OriLatitude,
+		"oriLongitude":  schedule.OriLongitude,
+		"destName":      schedule.DestName,
+		"destLatitude":  schedule.DestLatitude,
+		"destLongitude": schedule.DestLongitude,
+		"groupId":       schedule.GroupId,
+		"priority":      schedule.Priority,
+		"isHaveLocation": schedule.IsHaveLocation,
+		"isFirstSchedule": schedule.IsFirstSchedule,
+		"isTraveling":     schedule.IsTraveling,
+		"isUpdated":       false,
+		"recurrence":      schedule.Recurrence,
+		"recurrenceId":    schedule.RecurrenceId,
 	},
 	}
 
