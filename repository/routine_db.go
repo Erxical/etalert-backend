@@ -74,3 +74,15 @@ func (r *routineRepositoryDB) UpdateRoutine(id string, routine *Routine) error {
 	_, err = r.collection.UpdateOne(ctx, filter, update)
 	return err
 }
+
+func (r *routineRepositoryDB) DeleteRoutine(id string) error {
+	ctx := context.Background()
+
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return fmt.Errorf("failed to convert ID: %v", err)
+	}
+	filter := bson.M{"_id": objectId}
+	_, err = r.collection.DeleteOne(ctx, filter)
+	return err
+}

@@ -27,4 +27,5 @@ type RoutineService interface {
 	InsertRoutine(routine *RoutineInput) error
 	GetAllRoutines(string) ([]*RoutineResponse, error)
 	UpdateRoutine(string, *RoutineUpdateInput) error
+	DeleteRoutine(string) error
 }

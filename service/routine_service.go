@@ -63,3 +63,11 @@ func (s *routineService) UpdateRoutine(id string, routine *RoutineUpdateInput) e
 	}
 	return nil
 }
+
+func (s *routineService) DeleteRoutine(id string) error {
+	err := s.routineRepo.DeleteRoutine(id)
+	if err != nil {
+		return err
+	}
+	return nil
+}

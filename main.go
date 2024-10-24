@@ -86,8 +86,9 @@ func main() {
 
 	//Routine routes
     protected.Post("/routines", routineHandler.CreateRoutine)
-    protected.Patch("/routines/edit/:googleId", routineHandler.UpdateRoutine)
     protected.Get("/routines/:googleId", routineHandler.GetAllRoutines)
+    protected.Patch("/routines/edit/:id", routineHandler.UpdateRoutine)
+	protected.Delete("/routines/:id", routineHandler.DeleteRoutine)
 
 	//RoutineLog routes
 	protected.Post("/routine-logs", routineLogHandler.InsertRoutineLog)

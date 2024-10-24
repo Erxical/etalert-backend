@@ -13,4 +13,5 @@ type RoutineRepository interface {
 	InsertRoutine(routine *Routine) error
 	GetAllRoutines(string) ([]*Routine, error)
 	UpdateRoutine(string, *Routine) error
+	DeleteRoutine(string) error
 }

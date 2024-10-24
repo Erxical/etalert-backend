@@ -91,3 +91,13 @@ func (h *RoutineHandler) UpdateRoutine(c *fiber.Ctx) error {
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Routine updated successfully"})
 }
+
+func (h *RoutineHandler) DeleteRoutine(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	err := h.routinesrv.DeleteRoutine(id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete routine"})
+	}
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Routine deleted successfully"})
+}
