@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -30,7 +31,15 @@ func (r *routineLogRepositoryDB) GetRoutineLogs(googleId string, date string) ([
 
 	filter := bson.M{"googleId": googleId}
 	if date != "" {
-		filter["date"] = date
+		startDate, err := time.Parse("02-01-2006", date)
+		if err != nil {
+			return nil, fmt.Errorf("invalid date format: %v", err)
+		}
+		endDate := startDate.AddDate(0, 0, 6)
+		filter["date"] = bson.M{
+			"$gte": startDate.Format("02-01-2006"),
+			"$lt":  endDate.Format("02-01-2006"),
+		}
 	}
 	cursor, err := r.collection.Find(ctx, filter)
 	if err != nil {
