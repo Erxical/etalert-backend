@@ -3,6 +3,7 @@ package repository
 type Schedule struct {
 	Id              string  `bson:"_id,omitempty"`
 	GoogleId        string  `bson:"googleId"`
+	RoutineId       string  `bson:"routineId"`
 	Name            string  `bson:"name"`
 	Date            string  `bson:"date"`
 	StartTime       string  `bson:"startTime"`

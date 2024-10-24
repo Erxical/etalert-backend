@@ -326,6 +326,7 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 
 			newRoutineSchedule := &repository.Schedule{
 				GoogleId:        schedule.GoogleId,
+				RoutineId:       routine.Id,
 				Name:            routine.Name,
 				Date:            schedule.Date,
 				StartTime:       currentStartTime.Format("15:04"),
@@ -527,6 +528,7 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 
 					routineSchedule := repository.Schedule{
 						GoogleId:        schedule.GoogleId,
+						RoutineId:       routine.Id,
 						Name:            routine.Name,
 						Date:            date,
 						StartTime:       currentTime.Format("15:04"),
@@ -625,6 +627,7 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 	for _, schedule := range schedules {
 		scheduleResponses = append(scheduleResponses, &ScheduleResponse{
 			Id:              schedule.Id,
+			RoutineId:       schedule.RoutineId,
 			Name:            schedule.Name,
 			Date:            schedule.Date,
 			StartTime:       schedule.StartTime,
@@ -658,6 +661,7 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 
 	return &ScheduleResponse{
 		Id:              schedule.Id,
+		RoutineId:       schedule.RoutineId,
 		Name:            schedule.Name,
 		Date:            schedule.Date,
 		StartTime:       schedule.StartTime,
@@ -689,6 +693,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 	// Prepare the updated schedule structure
 	updatedSchedule := &repository.Schedule{
 		Id:              currentSchedule.Id,
+		RoutineId:       currentSchedule.RoutineId,
 		GoogleId:        currentSchedule.GoogleId,
 		Name:            schedule.Name,
 		Date:            schedule.Date,
@@ -788,6 +793,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 			// Save the adjusted schedule back to the database
 			err = s.scheduleRepo.UpdateSchedule(sch.Id, &repository.Schedule{
 				Id:              sch.Id,
+				RoutineId:       sch.RoutineId,
 				GoogleId:        sch.GoogleId,
 				Name:            sch.Name,
 				Date:            sch.Date,

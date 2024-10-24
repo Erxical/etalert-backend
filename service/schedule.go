@@ -2,6 +2,7 @@ package service
 
 type ScheduleInput struct {
 	GoogleId        string  `bson:"googleId"`
+	RoutineId       string  `bson:"routineId"`
 	Name            string  `bson:"name"`
 	Date            string  `bson:"date"`
 	StartTime       string  `bson:"startTime"`
@@ -21,12 +22,13 @@ type ScheduleInput struct {
 	IsUpdated       bool    `bson:"isUpdated"`
 	DepartTime      string  `bson:"departTime"`
 
-	Recurrence   string `bson:"recurrence"`
-	RecurrenceId int    `bson:"recurrenceId"`
+	Recurrence      string  `bson:"recurrence"`
+	RecurrenceId    int     `bson:"recurrenceId"`
 }
 
 type ScheduleResponse struct {
 	Id              string  `bson:"_id"`
+	RoutineId       string  `bson:"routineId"`
 	Name            string  `bson:"name"`
 	Date            string  `bson:"date"`
 	StartTime       string  `bson:"startTime"`
@@ -44,7 +46,7 @@ type ScheduleResponse struct {
 	IsFirstSchedule bool    `bson:"isFirstSchedule"`
 	IsTraveling     bool    `bson:"isTraveling"`
 	IsUpdated       bool    `bson:"isUpdated"`
-	
+
 	Recurrence      string  `bson:"recurrence"`
 }
 
