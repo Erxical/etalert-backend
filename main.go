@@ -45,6 +45,10 @@ func main() {
 	bedtimeService := service.NewBedtimeService(bedtimeRepository)
 	bedtimeHandler := handler.NewBedtimeHandler(bedtimeService)
 
+	routineLogRepository := repository.NewRoutineLogRepositoryDB(client, "etalert", "routineLog")
+	routineLogService := service.NewRoutineLogService(routineLogRepository)
+	routineLogHandler := handler.NewRoutineLogHandler(routineLogService)
+
 	routineRepository := repository.NewRoutineRepositoryDB(client, "etalert", "routine")
 	routineService := service.NewRoutineService(routineRepository)
 	routineHandler := handler.NewRoutineHandler(routineService)
@@ -84,6 +88,11 @@ func main() {
     protected.Post("/routines", routineHandler.CreateRoutine)
     protected.Patch("/routines/edit/:googleId", routineHandler.UpdateRoutine)
     protected.Get("/routines/:googleId", routineHandler.GetAllRoutines)
+
+	//RoutineLog routes
+	protected.Post("/routine-logs", routineLogHandler.InsertRoutineLog)
+	protected.Get("/routine-logs/:googleId/:date?", routineLogHandler.GetRoutineLogs)
+	protected.Delete("/routine-logs/:id", routineLogHandler.DeleteRoutineLog)
 
 	//Schedule routes
 	protected.Post("/schedules", scheduleHandler.CreateSchedule)
