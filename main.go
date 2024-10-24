@@ -3,18 +3,19 @@ package main
 import (
 	"context"
 	"etalert-backend/handler"
+	"etalert-backend/middlewares"
 	"etalert-backend/repository"
 	"etalert-backend/service"
-	"etalert-backend/middlewares"
 	etalert_websocket "etalert-backend/websocket"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"log"
-	"os"
 )
 
 func main() {
@@ -33,11 +34,11 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("Connected to MongoDB!")
-	
+
 	userRepository := repository.NewUserRepositoryDB(client, "etalert", "user")
 	userService := service.NewUserService(userRepository)
 	userHandler := handler.NewUserHandler(userService)
-	
+
 	authService := service.NewAuthService(userRepository)
 	authHandler := handler.NewAuthHandler(authService)
 
@@ -53,6 +54,14 @@ func main() {
 	routineService := service.NewRoutineService(routineRepository)
 	routineHandler := handler.NewRoutineHandler(routineService)
 
+	weeklyReportListRepository := repository.NewWeeklyReportListRepositoryDB(client, "etalert", "weeklyReportList")
+	weeklyReportListService := service.NewWeeklyReportListService(weeklyReportListRepository)
+	weeklyReportListHandler := handler.NewWeeklyReportListHandler(weeklyReportListService)
+
+	weeklyReportRepository := repository.NewWeeklyReportRepositoryDB(client, "etalert", "weeklyReport")
+	weeklyReportService := service.NewWeeklyReportService(weeklyReportRepository, userRepository, routineRepository, weeklyReportListRepository, routineLogRepository)
+	weeklyReportHandler := handler.NewWeeklyReportHandler(weeklyReportService)
+
 	scheduleLogRepository := repository.NewScheduleLogRepositoryDB(client, "etalert", "scheduleLog")
 
 	scheduleRepository := repository.NewScheduleRepositoryDB(client, "etalert", "schedule")
@@ -65,35 +74,41 @@ func main() {
 	server := fiber.New()
 
 	server.Get("/ws", websocket.New(func(c *websocket.Conn) {
-        etalert_websocket.HandleConnections(c)
-    }))
+		etalert_websocket.HandleConnections(c)
+	}))
 
 	server.Post("/login", authHandler.Login)
 	server.Post("/refresh-token", authHandler.RefreshToken)
-    server.Post("/create-user", userHandler.CreateUser)
+	server.Post("/create-user", userHandler.CreateUser)
 
 	protected := server.Group("/users", middlewares.ValidateSession(authService))
 
-    // Protected routes
+	// Protected routes
 	//User routes
-    protected.Patch("/:googleId", userHandler.UpdateUser)
-    protected.Get("/info/:googleId", userHandler.GetUserInfo)
+	protected.Patch("/:googleId", userHandler.UpdateUser)
+	protected.Get("/info/:googleId", userHandler.GetUserInfo)
 
 	//Bedtime routes
-    protected.Post("/bedtimes", bedtimeHandler.CreateBedtime)
-    protected.Patch("/bedtimes/:googleId", bedtimeHandler.UpdateBedtime)
-    protected.Get("/bedtimes/info/:googleId", bedtimeHandler.GetBedtimeInfo)
+	protected.Post("/bedtimes", bedtimeHandler.CreateBedtime)
+	protected.Patch("/bedtimes/:googleId", bedtimeHandler.UpdateBedtime)
+	protected.Get("/bedtimes/info/:googleId", bedtimeHandler.GetBedtimeInfo)
 
 	//Routine routes
-    protected.Post("/routines", routineHandler.CreateRoutine)
-    protected.Get("/routines/:googleId", routineHandler.GetAllRoutines)
-    protected.Patch("/routines/edit/:id", routineHandler.UpdateRoutine)
+	protected.Post("/routines", routineHandler.CreateRoutine)
+	protected.Get("/routines/:googleId", routineHandler.GetAllRoutines)
+	protected.Patch("/routines/edit/:id", routineHandler.UpdateRoutine)
 	protected.Delete("/routines/:id", routineHandler.DeleteRoutine)
 
 	//RoutineLog routes
 	protected.Post("/routine-logs", routineLogHandler.InsertRoutineLog)
 	protected.Get("/routine-logs/:googleId/:date?", routineLogHandler.GetRoutineLogs)
 	protected.Delete("/routine-logs/:id", routineLogHandler.DeleteRoutineLog)
+
+	//WeeklyReport routes
+	protected.Get("/weekly-reports/:googleId/:date", weeklyReportHandler.GetWeeklyReports)
+
+	//WeeklyReportList routes
+	protected.Get("/weekly-report-lists/:googleId", weeklyReportListHandler.GetWeeklyReportLists)
 
 	//Schedule routes
 	protected.Post("/schedules", scheduleHandler.CreateSchedule)
