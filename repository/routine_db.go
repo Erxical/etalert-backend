@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -54,9 +56,14 @@ func (r *routineRepositoryDB) GetAllRoutines(gId string) ([]*Routine, error) {
     return routines, nil
 }
 
-func (r *routineRepositoryDB) UpdateRoutine(gId string, routine *Routine) error {
+func (r *routineRepositoryDB) UpdateRoutine(id string, routine *Routine) error {
 	ctx := context.Background()
-	filter := bson.M{"googleId": gId}
+
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return fmt.Errorf("failed to convert ID: %v", err)
+	}
+	filter := bson.M{"_id": (objectId)}
 	update := bson.M{
 		"$set": bson.M{
 			"name":     routine.Name,
@@ -64,6 +71,6 @@ func (r *routineRepositoryDB) UpdateRoutine(gId string, routine *Routine) error 
 			"order":    routine.Order,
 		},
 	}
-	_, err := r.collection.UpdateOne(ctx, filter, update)
+	_, err = r.collection.UpdateOne(ctx, filter, update)
 	return err
 }

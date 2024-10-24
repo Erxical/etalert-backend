@@ -1,10 +1,12 @@
 package repository
 
 type Routine struct {
-	GoogleId string `bson:"googleId"`
-	Name     string `bson:"name"`
-	Duration int    `bson:"duration"`
-	Order    int    `bson:"order"`
+	Id       string   `bson:"_id,omitempty"`
+	GoogleId string   `bson:"googleId"`
+	Name     string   `bson:"name"`
+	Duration int      `bson:"duration"`
+	Order    int      `bson:"order"`
+	Days     []string `bson:"days"`
 }
 
 type RoutineRepository interface {

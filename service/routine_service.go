@@ -19,6 +19,7 @@ func (s routineService) InsertRoutine(routine *RoutineInput) error {
 		Name:     routine.Name,
 		Duration: routine.Duration,
 		Order:    routine.Order,
+		Days:     routine.Days,
 	})
 	if err != nil {
 		return err
@@ -27,33 +28,35 @@ func (s routineService) InsertRoutine(routine *RoutineInput) error {
 }
 
 func (s *routineService) GetAllRoutines(gId string) ([]*RoutineResponse, error) {
-    // Retrieve routines from the repository
-    routines, err := s.routineRepo.GetAllRoutines(gId)
-    if err != nil {
-        return nil, err
-    }
+	// Retrieve routines from the repository
+	routines, err := s.routineRepo.GetAllRoutines(gId)
+	if err != nil {
+		return nil, err
+	}
 
-    // Create a slice to hold the response
-    var routineResponses []*RoutineResponse
+	// Create a slice to hold the response
+	var routineResponses []*RoutineResponse
 
-    // Iterate over the routines to map each one to a RoutineResponse
-    for _, routine := range routines {
-        routineResponses = append(routineResponses, &RoutineResponse{
-            Name:     routine.Name,
-            Duration: routine.Duration,
-            Order:    routine.Order,
-        })
-    }
+	// Iterate over the routines to map each one to a RoutineResponse
+	for _, routine := range routines {
+		routineResponses = append(routineResponses, &RoutineResponse{
+			Id:       routine.Id,
+			Name:     routine.Name,
+			Duration: routine.Duration,
+			Order:    routine.Order,
+			Days:     routine.Days,
+		})
+	}
 
-    return routineResponses, nil
+	return routineResponses, nil
 }
 
-
-func (s *routineService) UpdateRoutine(gId string, routine *RoutineResponse) error {
-	err := s.routineRepo.UpdateRoutine(gId, &repository.Routine{
+func (s *routineService) UpdateRoutine(id string, routine *RoutineUpdateInput) error {
+	err := s.routineRepo.UpdateRoutine(id, &repository.Routine{
 		Name:     routine.Name,
 		Duration: routine.Duration,
 		Order:    routine.Order,
+		Days:     routine.Days,
 	})
 	if err != nil {
 		return err
