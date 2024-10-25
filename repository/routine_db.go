@@ -69,6 +69,7 @@ func (r *routineRepositoryDB) UpdateRoutine(id string, routine *Routine) error {
 			"name":     routine.Name,
 			"duration": routine.Duration,
 			"order":    routine.Order,
+			"days":     routine.Days,
 		},
 	}
 	_, err = r.collection.UpdateOne(ctx, filter, update)
