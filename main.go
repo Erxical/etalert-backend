@@ -69,6 +69,7 @@ func main() {
 	scheduleHandler := handler.NewScheduleHandler(scheduleService)
 
 	scheduleService.StartCronJob()
+	weeklyReportService.StartCronJob()
 
 	// initialize new instance of fiber
 	server := fiber.New()

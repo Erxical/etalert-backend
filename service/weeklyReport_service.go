@@ -80,6 +80,7 @@ func (w *weeklyReportService) generateWeeklyReport() {
 				}
 				w.weeklyReportRepo.InsertWeeklyReport(weeklyReport)
 			}
+			fmt.Printf("Weekly report generated for %s", user)
 		}
 	}
 }
