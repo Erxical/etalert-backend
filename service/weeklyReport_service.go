@@ -41,11 +41,19 @@ func (w *weeklyReportService) generateWeeklyReport() {
 				fmt.Println(err)
 				return
 			}
+			if len(routines) == 0 {
+				fmt.Printf("No routines found for %s", user)
+				return
+			}
 
 			aWeekAgo := now.AddDate(0, 0, -7)
 			routineReports, err := w.routineLogRepo.GetRoutineLogs(user, aWeekAgo.Format("02-01-2006"))
 			if err != nil {
 				fmt.Println(err)
+				return
+			}
+			if len(routineReports) == 0 {
+				fmt.Printf("No routine logs found for %s", user)
 				return
 			}
 
