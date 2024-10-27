@@ -28,7 +28,7 @@ func (w *weeklyReportService) StartCronJob() {
 
 func (w *weeklyReportService) generateWeeklyReport() {
 	now := time.Now().UTC().Add(7 * time.Hour)
-	if now.Weekday() == time.Monday {
+	if now.Weekday() == time.Monday  && now.Hour() == 0 && now.Minute() == 0 {
 	users, err := w.userRepo.GetAllUsersId()
 	if err != nil {
 		fmt.Println(err)
