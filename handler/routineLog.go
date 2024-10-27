@@ -20,7 +20,7 @@ type createRoutineLogRequest struct {
 	StartTime     string `json:"startTime" validate:"required"`
 	EndTime       string `json:"endTime" validate:"required"`
 	ActualEndTime string `json:"actualEndTime" validate:"required"`
-	Skewness      int    `json:"skewness" validate:"required"`
+	Skewness      int    `json:"skewness"`
 }
 
 type createRoutineLogResponse struct {
