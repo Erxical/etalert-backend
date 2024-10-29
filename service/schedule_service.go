@@ -171,6 +171,12 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error
 	}
 	schedule.GroupId = groupId
 
+	recurrenceId, err := s.scheduleRepo.GetNextRecurrenceId()
+	if err != nil {
+		return "", fmt.Errorf("failed to get next recurrence ID: %v", err)
+	}
+	schedule.RecurrenceId = recurrenceId
+
 	err = s.scheduleRepo.InsertSchedule(&repository.Schedule{
 		GoogleId:        schedule.GoogleId,
 		Name:            schedule.Name,
@@ -273,6 +279,7 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 		IsFirstSchedule: false,
 		IsTraveling:     true,
 		IsUpdated:       false,
+		RecurrenceId:    schedule.RecurrenceId,
 	}
 
 	err = s.scheduleRepo.InsertSchedule(leaveSchedule)
@@ -352,6 +359,7 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 				IsFirstSchedule: false,
 				IsTraveling:     false,
 				IsUpdated:       false,
+				RecurrenceId:    schedule.RecurrenceId,
 			}
 
 			err = s.scheduleRepo.InsertSchedule(newRoutineSchedule)
@@ -385,6 +393,7 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 		IsFirstSchedule: false,
 		IsTraveling:     false,
 		IsUpdated:       false,
+		RecurrenceId:    schedule.RecurrenceId,
 	}
 
 	err = s.scheduleRepo.InsertSchedule(bedtimeSchedule)
