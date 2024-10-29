@@ -159,6 +159,34 @@ func (h *ScheduleHandler) UpdateSchedule(c *fiber.Ctx) error {
 	return c.JSON(createScheduleResponse{Message: "Schedule updated successfully"})
 }
 
+func (h *ScheduleHandler) UpdateScheduleByRecurrenceId(c *fiber.Ctx) error {
+	recurrenceId := c.Params("recurrenceId")
+	date := c.Params("date", "")
+	var req updateScheduleRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+	}
+
+	if err := validators.ValidateStruct(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	schedule := &service.ScheduleUpdateInput{
+		Name:          req.Name,
+		Date:          req.Date,
+		StartTime:     req.StartTime,
+		EndTime:       req.EndTime,
+		IsHaveEndTime: req.IsHaveEndTime,
+	}
+
+	err := h.schedulesrv.UpdateScheduleByRecurrenceId(recurrenceId, schedule, date)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update schedule"})
+	}
+
+	return c.JSON(createScheduleResponse{Message: "Schedule updated successfully"})
+}
+
 func (h *ScheduleHandler) DeleteSchedule(c *fiber.Ctx) error {
 	groupId := c.Params("groupId")
 

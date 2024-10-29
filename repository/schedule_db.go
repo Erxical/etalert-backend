@@ -228,6 +228,42 @@ func (s *scheduleRepositoryDB) GetSchedulesByGroupId(groupId int) ([]*Schedule, 
 	return schedules, nil
 }
 
+func (s *scheduleRepositoryDB) GetSchedulesByRecurrenceId(recurrenceId int, date string) ([]*Schedule, error) {
+	ctx := context.Background()
+	var schedules []*Schedule
+
+	filter := bson.M{
+		"recurrenceId": recurrenceId,
+		"recurrence":   bson.M{"$ne": ""},
+	}
+	if date != "" {
+		filter["date"] = bson.M{"$gte": date}
+	}
+
+	cursor, err := s.collection.Find(ctx, filter, options.Find().SetSort(bson.D{
+		{Key: "date", Value: 1},
+		{Key: "startTime", Value: 1},
+	}))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var schedule Schedule
+		if err := cursor.Decode(&schedule); err != nil {
+			return nil, err
+		}
+		schedules = append(schedules, &schedule)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return schedules, nil
+}
+
 func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) error {
 	ctx := context.Background()
 
