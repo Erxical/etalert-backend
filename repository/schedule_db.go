@@ -297,9 +297,12 @@ func (s *scheduleRepositoryDB) DeleteSchedule(groupId int) error {
 	return err
 }
 
-func (s *scheduleRepositoryDB) DeleteScheduleByRecurrenceId(recurrenceId int) error {
+func (s *scheduleRepositoryDB) DeleteScheduleByRecurrenceId(recurrenceId int, date string) error {
 	ctx := context.Background()
 	filter := bson.M{"recurrenceId": recurrenceId}
+	if date != "" {
+		filter["date"] = bson.M{"$gte": date}
+	}
 
 	_, err := s.collection.DeleteMany(ctx, filter)
 	return err

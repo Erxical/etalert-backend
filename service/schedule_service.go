@@ -676,8 +676,9 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 			IsFirstSchedule: schedule.IsFirstSchedule,
 			IsTraveling:     schedule.IsTraveling,
 			IsUpdated:       schedule.IsUpdated,
-
-			Recurrence: schedule.Recurrence,
+			
+			Recurrence:      schedule.Recurrence,
+			RecurrenceId:    schedule.RecurrenceId,
 		})
 	}
 
@@ -709,8 +710,9 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
-
-		Recurrence: schedule.Recurrence,
+		
+		Recurrence:      schedule.Recurrence,
+		RecurrenceId:    schedule.RecurrenceId,
 	}, nil
 }
 
@@ -896,12 +898,12 @@ func (s *scheduleService) DeleteSchedule(groupId string) error {
 	return nil
 }
 
-func (s *scheduleService) DeleteScheduleByRecurrenceId(recurrenceId string) error {
+func (s *scheduleService) DeleteScheduleByRecurrenceId(recurrenceId string, date string) error {
 	id, err := strconv.Atoi(recurrenceId)
 	if err != nil {
 		return fmt.Errorf("invalid recurrenceId: %v", err)
 	}
-	err = s.scheduleRepo.DeleteScheduleByRecurrenceId(id)
+	err = s.scheduleRepo.DeleteScheduleByRecurrenceId(id, date)
 	if err != nil {
 		return fmt.Errorf("failed to delete schedule: %v", err)
 	}

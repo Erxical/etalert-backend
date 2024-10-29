@@ -48,6 +48,7 @@ type ScheduleResponse struct {
 	IsUpdated       bool    `bson:"isUpdated"`
 
 	Recurrence      string  `bson:"recurrence"`
+	RecurrenceId    int     `bson:"recurrenceId"`
 }
 
 type ScheduleUpdateInput struct {
@@ -66,5 +67,5 @@ type ScheduleService interface {
 	GetScheduleById(id string) (*ScheduleResponse, error)
 	UpdateSchedule(id string, schedule *ScheduleUpdateInput) error
 	DeleteSchedule(groupId string) error
-	DeleteScheduleByRecurrenceId(recurrenceId string) error
+	DeleteScheduleByRecurrenceId(recurrenceId string, date string) error
 }

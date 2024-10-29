@@ -44,5 +44,5 @@ type ScheduleRepository interface {
 	UpdateSchedule(id string, schedule *Schedule) error
 	UpdateScheduleTime(id string, startTime string, endTime string) error
 	DeleteSchedule(groupId int) error
-	DeleteScheduleByRecurrenceId(recurrenceId int) error
+	DeleteScheduleByRecurrenceId(recurrenceId int, date string) error
 }

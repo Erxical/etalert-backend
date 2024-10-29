@@ -172,8 +172,9 @@ func (h *ScheduleHandler) DeleteSchedule(c *fiber.Ctx) error {
 
 func (h *ScheduleHandler) DeleteScheduleByRecurrenceId(c *fiber.Ctx) error {
 	recurrenceId := c.Params("recurrenceId")
+	date := c.Params("date", "")
 
-	err := h.schedulesrv.DeleteScheduleByRecurrenceId(recurrenceId)
+	err := h.schedulesrv.DeleteScheduleByRecurrenceId(recurrenceId, date)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete schedule"})
 	}

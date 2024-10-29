@@ -117,7 +117,7 @@ func main() {
 	protected.Get("/schedules/:id", scheduleHandler.GetScheduleById)
 	protected.Patch("/schedules/:id", scheduleHandler.UpdateSchedule)
 	protected.Delete("/schedules/:groupId", scheduleHandler.DeleteSchedule)
-	protected.Delete("/schedules/recurrence/:recurrenceId", scheduleHandler.DeleteScheduleByRecurrenceId)
+	protected.Delete("/schedules/recurrence/:recurrenceId/:date?", scheduleHandler.DeleteScheduleByRecurrenceId)
 
 	go etalert_websocket.HandleMessages()
 
