@@ -246,6 +246,13 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 	}
 	leaveTime := startTime.Add(-travelDuration)
 	arriveTime := startTime
+	if leaveTime.Year() < arriveTime.Year() {
+		date, err := time.Parse("02-01-2006", schedule.Date)
+		if err == nil {
+			date = date.AddDate(0, 0, -1)
+			schedule.Date = date.Format("02-01-2006")
+		}
+	}
 	schedule.StartTime = leaveTime.Format("15:04")
 
 	leaveSchedule := &repository.Schedule{
@@ -323,6 +330,14 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 
 			currentEndTime := currentStartTime
 			currentStartTime = currentStartTime.Add(-routineDuration)
+
+			if currentStartTime.Year() < currentEndTime.Year() {
+				date, err := time.Parse("02-01-2006", schedule.Date)
+				if err == nil {
+					date = date.AddDate(0, 0, -1)
+					schedule.Date = date.Format("02-01-2006")
+				}
+			}
 
 			newRoutineSchedule := &repository.Schedule{
 				GoogleId:        schedule.GoogleId,
@@ -472,7 +487,16 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 		dateSchedules := []repository.Schedule{mainSchedule}
 
 		if schedule.IsHaveLocation {
+			currentEndTime := currentTime
 			currentTime = currentTime.Add(-travelDuration)
+
+			if currentTime.Year() < currentEndTime.Year() {
+				newDate, err := time.Parse("02-01-2006", date)
+				if err == nil {
+					newDate = newDate.AddDate(0, 0, -1)
+					date = newDate.Format("02-01-2006")
+				}
+			}
 			travelSchedule := repository.Schedule{
 				GoogleId:        schedule.GoogleId,
 				Name:            "Leave From " + schedule.OriName,
@@ -526,6 +550,13 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 					endTime := currentTime
 					currentTime = currentTime.Add(-routineDuration)
 
+					if currentTime.Year() < endTime.Year() {
+						newDate, err := time.Parse("02-01-2006", date)
+						if err == nil {
+							newDate = newDate.AddDate(0, 0, -1)
+							date = newDate.Format("02-01-2006")
+						}
+					}
 					routineSchedule := repository.Schedule{
 						GoogleId:        schedule.GoogleId,
 						RoutineId:       routine.Id,
