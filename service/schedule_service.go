@@ -757,7 +757,6 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 		if err != nil {
 			return fmt.Errorf("failed to fetch schedules for the day: %v", err)
 		}
-		allSchedules = allSchedules[1:]
 
 		// Adjust times from the updated schedule backward
 		// Starting from the end of the list and moving toward the current schedule
@@ -766,7 +765,9 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 			return fmt.Errorf("failed to parse new start time: %v", err)
 		}
 
-		for i := 0; i <= len(allSchedules)-1; i++ {
+		date := updatedSchedule.Date
+
+		for i := 1; i < len(allSchedules); i++ {
 			sch := allSchedules[i]
 
 			// Determine the duration of the current schedule
@@ -787,10 +788,19 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 			}
 
 			// Calculate the new end time as the current start time
-			sch.EndTime = currentStartTime.Format("15:04")
+			endTime := currentStartTime
+			sch.EndTime = endTime.Format("15:04")
 
 			// Adjust the current start time by subtracting the routine duration
 			currentStartTime = currentStartTime.Add(-duration)
+
+			if currentStartTime.Year() < endTime.Year() {
+				newDate, err := time.Parse("02-01-2006", sch.Date)
+				if err == nil {
+					newDate = newDate.AddDate(0, 0, -1)
+					date = newDate.Format("02-01-2006")
+				}
+			}
 
 			if sch.IsTraveling {
 				travelTimeText, err := s.scheduleRepo.GetTravelTime(
@@ -817,7 +827,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 
 				leaveTime := startTime.Add(-travelDuration).Add(duration)
 				currentStartTime = leaveTime
-				sch.EndTime = ""
+				// sch.EndTime = ""
 			}
 
 			// Update the schedule times
@@ -829,7 +839,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 				RoutineId:       sch.RoutineId,
 				GoogleId:        sch.GoogleId,
 				Name:            sch.Name,
-				Date:            sch.Date,
+				Date:            date,
 				StartTime:       sch.StartTime,
 				EndTime:         sch.EndTime,
 				IsHaveEndTime:   sch.IsHaveEndTime,
@@ -946,14 +956,13 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 			if err != nil {
 				return fmt.Errorf("failed to fetch schedules for the day: %v", err)
 			}
-			allSchedules = allSchedules[1:]
 
 			currentStartTime, err := time.Parse("15:04", updatedSchedule.StartTime)
 			if err != nil {
 				return fmt.Errorf("failed to parse new start time: %v", err)
 			}
 
-			for i := 0; i <= len(allSchedules)-1; i++ {
+			for i := 1; i < len(allSchedules); i++ {
 				sch := allSchedules[i]
 
 				var duration time.Duration
@@ -971,9 +980,18 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 					duration = 5 * time.Minute
 				}
 
-				sch.EndTime = currentStartTime.Format("15:04")
+				endTime := currentStartTime
+				sch.EndTime = endTime.Format("15:04")
 
 				currentStartTime = currentStartTime.Add(-duration)
+
+				if currentStartTime.Year() < endTime.Year() {
+					newDate, err := time.Parse("02-01-2006", sch.Date)
+					if err == nil {
+						newDate = newDate.AddDate(0, 0, -1)
+						date = newDate.Format("02-01-2006")
+					}
+				}
 
 				if sch.IsTraveling {
 					travelTimeText, err := s.scheduleRepo.GetTravelTime(
@@ -1010,7 +1028,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 					RoutineId:       sch.RoutineId,
 					GoogleId:        sch.GoogleId,
 					Name:            sch.Name,
-					Date:            sch.Date,
+					Date:            date,
 					StartTime:       sch.StartTime,
 					EndTime:         sch.EndTime,
 					IsHaveEndTime:   sch.IsHaveEndTime,
