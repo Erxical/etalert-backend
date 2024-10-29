@@ -575,6 +575,22 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 					dateSchedules = append([]repository.Schedule{routineSchedule}, dateSchedules...)
 				}
 			}
+			bedtimeStartTime := currentTime.Add(-5 * time.Minute)
+			bedtimeSchedule := repository.Schedule{
+				GoogleId:        schedule.GoogleId,
+				Name:            "Wake up",
+				Date:            date,
+				StartTime:       bedtimeStartTime.Format("15:04"),
+				GroupId:         schedule.GroupId,
+				IsHaveEndTime:   false,
+				IsHaveLocation:  false,
+				IsFirstSchedule: false,
+				IsTraveling:     false,
+				IsUpdated:       false,
+				RecurrenceId:    schedule.RecurrenceId,
+			}
+
+			dateSchedules = append([]repository.Schedule{bedtimeSchedule}, dateSchedules...)
 		}
 
 		allSchedules = append(allSchedules, dateSchedules...)
