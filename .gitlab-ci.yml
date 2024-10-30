@@ -11,11 +11,6 @@ build-etalert-backend:
     DOCKER_TLS_CERTDIR: ""
   services:
     - docker:dind
-  before_script:
-    - docker run --rm --privileged tonistiigi/binfmt --install all
-    - docker buildx create --use
-    - apk add --no-cache perl perl-app-cpanminus
-    - cpanm Term::ReadLine
   script:
     - chmod +x build-docker-etalert-backend.sh
     - ./build-docker-etalert-backend.sh
