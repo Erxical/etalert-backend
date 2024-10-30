@@ -68,6 +68,10 @@ func main() {
 	scheduleService := service.NewScheduleService(scheduleRepository, scheduleLogRepository, routineRepository, bedtimeRepository)
 	scheduleHandler := handler.NewScheduleHandler(scheduleService)
 
+	feedbackRepository := repository.NewFeedbackRepositoryDB(client, "etalert", "feedback")
+	feedbackService := service.NewFeedbackService(feedbackRepository)
+	feedbackHandler := handler.NewFeedbackHandler(feedbackService)
+
 	scheduleService.StartCronJob()
 	weeklyReportService.StartCronJob()
 
@@ -119,6 +123,9 @@ func main() {
 	protected.Patch(("/schedules/recurrence/:recurrenceId/:date?"), scheduleHandler.UpdateScheduleByRecurrenceId)
 	protected.Delete("/schedules/:groupId", scheduleHandler.DeleteSchedule)
 	protected.Delete("/schedules/recurrence/:recurrenceId/:date?", scheduleHandler.DeleteScheduleByRecurrenceId)
+
+	//Feedback routes
+	protected.Post("/create-feedbacks", feedbackHandler.CreateFeedback)
 
 	go etalert_websocket.HandleMessages()
 
