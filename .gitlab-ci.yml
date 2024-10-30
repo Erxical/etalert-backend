@@ -11,6 +11,8 @@ build-etalert-backend:
     DOCKER_TLS_CERTDIR: ""
   services:
     - docker:dind
+  before_script:
+    - docker buildx create --use
   script:
     - chmod +x build-docker-etalert-backend.sh
     - ./build-docker-etalert-backend.sh
