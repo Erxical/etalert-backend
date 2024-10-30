@@ -67,6 +67,7 @@ type ScheduleService interface {
 	InsertRecurrenceSchedule(schedule *ScheduleInput) (string, error)
 	GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error)
 	GetScheduleById(id string) (*ScheduleResponse, error)
+	GetSchedulesByGroupId(groupId string) ([]string, error)
 	UpdateSchedule(id string, schedule *ScheduleUpdateInput) error
 	UpdateScheduleByRecurrenceId(recurrenceId string, schedule *ScheduleUpdateInput, date string) error
 	DeleteSchedule(groupId string) error

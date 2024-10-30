@@ -793,6 +793,25 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 	}, nil
 }
 
+func (s *scheduleService) GetSchedulesByGroupId(groupId string) ([]string, error) {
+	id, err := strconv.Atoi(groupId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse group ID: %v", err)
+	}
+	schedules, err := s.scheduleRepo.GetSchedulesByGroupId(id)
+	if err != nil {
+		return nil, err
+	}
+
+	var scheduleIds []string
+
+	for _, schedule := range schedules {
+		scheduleIds = append(scheduleIds, schedule.Id)
+	}
+
+	return scheduleIds, nil
+}
+
 func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInput) error {
 	// Fetch the current schedule by ID
 	currentSchedule, err := s.scheduleRepo.GetScheduleById(id)
