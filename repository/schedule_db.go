@@ -38,10 +38,10 @@ type DistanceMatrixResponse struct {
 	Status string `json:"status"`
 }
 
-func (s *scheduleRepositoryDB) GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, depTime string) (string, error) {
+func (s *scheduleRepositoryDB) GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, mode string, depTime string) (string, error) {
 	godotenv.Load()
 	apiKey := os.Getenv("G_MAP_API_KEY")
-	url := fmt.Sprintf("https://maps.googleapis.com/maps/api/distancematrix/json?origins=%s,%s&destinations=%s,%s&mode=driving&departure_time=%s&key=%s", oriLat, oriLong, destLat, destLong, depTime, apiKey)
+	url := fmt.Sprintf("https://maps.googleapis.com/maps/api/distancematrix/json?origins=%s,%s&destinations=%s,%s&mode=%s&departure_time=%s&key=%s", oriLat, oriLong, destLat, destLong, mode, depTime, apiKey)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 

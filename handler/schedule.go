@@ -26,12 +26,13 @@ type createScheduleRequest struct {
 	DestName        string  `json:"destName"`
 	DestLatitude    float64 `json:"destLatitude"`
 	DestLongitude   float64 `json:"destLongitude"`
+	Transportation  string  `json:"transportation"`
 	Priority        int     `json:"priority"`
 	IsHaveLocation  bool    `json:"isHaveLocation"`
 	IsFirstSchedule bool    `json:"isFirstSchedule"`
 
-	Recurrence      string  `json:"recurrence"`
-	RecurrenceId    int     `json:"recurrenceId"`
+	Recurrence   string `json:"recurrence"`
+	RecurrenceId int    `json:"recurrenceId"`
 }
 
 type updateScheduleRequest struct {
@@ -73,11 +74,12 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 		DestName:        req.DestName,
 		DestLatitude:    req.DestLatitude,
 		DestLongitude:   req.DestLongitude,
+		Transportation:  req.Transportation,
 		Priority:        req.Priority,
 		IsHaveLocation:  req.IsHaveLocation,
 		IsFirstSchedule: req.IsFirstSchedule,
 
-		Recurrence:      req.Recurrence,
+		Recurrence: req.Recurrence,
 	}
 
 	if schedule.Recurrence != "none" {
@@ -88,7 +90,7 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 		if str != "" {
 			return c.Status(fiber.StatusCreated).JSON(createScheduleResponse{Message: "Schedule created successfully with warning " + str})
 		}
-	
+
 		return c.Status(fiber.StatusCreated).JSON(createScheduleResponse{Message: "Schedule created successfully"})
 	}
 

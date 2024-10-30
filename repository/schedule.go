@@ -18,6 +18,7 @@ type Schedule struct {
 	DestLatitude    float64   `bson:"destLatitude"`
 	DestLongitude   float64   `bson:"destLongitude"`
 	GroupId         int       `bson:"groupId"`
+	Transportation  string    `bson:"transportation"`
 	Priority        int       `bson:"priority"`
 	IsHaveLocation  bool      `bson:"isHaveLocation"`
 	IsFirstSchedule bool      `bson:"isFirstSchedule"`
@@ -34,7 +35,7 @@ type Counter struct {
 }
 
 type ScheduleRepository interface {
-	GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, depTime string) (string, error)
+	GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, mode string, depTime string) (string, error)
 	GetNextGroupId() (int, error)
 	GetNextRecurrenceId() (int, error)
 	CalculateNextRecurrenceDate(currentDate, recurrence string, count int) ([]string, error)

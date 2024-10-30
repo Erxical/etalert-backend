@@ -84,11 +84,15 @@ func (s *scheduleService) autoUpdateSchedules() {
 				break
 			}
 			if schedule.IsTraveling {
+				if schedule.Transportation != "walking" && schedule.Transportation != "driving" && schedule.Transportation != "transit" {
+					schedule.Transportation = "driving"
+				}
 				travelTimeText, err := s.scheduleRepo.GetTravelTime(
 					fmt.Sprintf("%f", schedule.OriLatitude),
 					fmt.Sprintf("%f", schedule.OriLongitude),
 					fmt.Sprintf("%f", schedule.DestLatitude),
 					fmt.Sprintf("%f", schedule.DestLongitude),
+					schedule.Transportation,
 					"now",
 				)
 				if err != nil {
@@ -196,6 +200,7 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error
 		DestLatitude:    schedule.DestLatitude,
 		DestLongitude:   schedule.DestLongitude,
 		GroupId:         schedule.GroupId,
+		Transportation:  schedule.Transportation,
 		Priority:        schedule.Priority,
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
@@ -234,11 +239,15 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 		departureTime = "now"
 	}
 
+	if schedule.Transportation != "walking" && schedule.Transportation != "driving" && schedule.Transportation != "transit" {
+		schedule.Transportation = "driving"
+	}
 	travelTimeText, err := s.scheduleRepo.GetTravelTime(
 		fmt.Sprintf("%f", schedule.OriLatitude),
 		fmt.Sprintf("%f", schedule.OriLongitude),
 		fmt.Sprintf("%f", schedule.DestLatitude),
 		fmt.Sprintf("%f", schedule.DestLongitude),
+		schedule.Transportation,
 		departureTime,
 	)
 	if err != nil {
@@ -504,6 +513,7 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 			DestLatitude:    schedule.DestLatitude,
 			DestLongitude:   schedule.DestLongitude,
 			GroupId:         schedule.GroupId,
+			Transportation:  schedule.Transportation,
 			Priority:        schedule.Priority,
 			IsHaveLocation:  schedule.IsHaveLocation,
 			IsFirstSchedule: schedule.IsFirstSchedule,
@@ -694,11 +704,15 @@ func (s *scheduleService) calculateTravelDurationOnce(schedule *ScheduleInput) (
 		departureTime = "now"
 	}
 
+	if schedule.Transportation != "walking" && schedule.Transportation != "driving" && schedule.Transportation != "transit" {
+		schedule.Transportation = "driving"
+	}
 	travelTimeText, err := s.scheduleRepo.GetTravelTime(
 		fmt.Sprintf("%f", schedule.OriLatitude),
 		fmt.Sprintf("%f", schedule.OriLongitude),
 		fmt.Sprintf("%f", schedule.DestLatitude),
 		fmt.Sprintf("%f", schedule.DestLongitude),
+		schedule.Transportation,
 		departureTime,
 	)
 	if err != nil {
@@ -732,6 +746,7 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 			DestLatitude:    schedule.DestLatitude,
 			DestLongitude:   schedule.DestLongitude,
 			GroupId:         schedule.GroupId,
+			Transportation:  schedule.Transportation,
 			Priority:        schedule.Priority,
 			IsHaveLocation:  schedule.IsHaveLocation,
 			IsFirstSchedule: schedule.IsFirstSchedule,
@@ -767,6 +782,7 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 		DestLatitude:    schedule.DestLatitude,
 		DestLongitude:   schedule.DestLongitude,
 		GroupId:         schedule.GroupId,
+		Transportation:  schedule.Transportation,
 		Priority:        schedule.Priority,
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
@@ -805,6 +821,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 		DestLatitude:    currentSchedule.DestLatitude,
 		DestLongitude:   currentSchedule.DestLongitude,
 		GroupId:         currentSchedule.GroupId,
+		Transportation:  currentSchedule.Transportation,
 		Priority:        currentSchedule.Priority,
 		IsHaveLocation:  currentSchedule.IsHaveLocation,
 		IsFirstSchedule: currentSchedule.IsFirstSchedule,
@@ -863,12 +880,16 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 				date = date.AddDate(0, 0, -1)
 			}
 
+			if allSchedules[i-1].Transportation != "walking" && allSchedules[i-1].Transportation != "driving" && allSchedules[i-1].Transportation != "transit" {
+				allSchedules[i-1].Transportation = "driving"
+			}
 			if sch.IsTraveling {
 				travelTimeText, err := s.scheduleRepo.GetTravelTime(
 					fmt.Sprintf("%f", allSchedules[i-1].OriLatitude),
 					fmt.Sprintf("%f", allSchedules[i-1].OriLongitude),
 					fmt.Sprintf("%f", allSchedules[i-1].DestLatitude),
 					fmt.Sprintf("%f", allSchedules[i-1].DestLongitude),
+					allSchedules[i-1].Transportation,
 					"now",
 				)
 
@@ -905,6 +926,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 				DestLatitude:    sch.DestLatitude,
 				DestLongitude:   sch.DestLongitude,
 				GroupId:         sch.GroupId,
+				Transportation:  sch.Transportation,
 				Priority:        sch.Priority,
 				IsHaveLocation:  sch.IsHaveLocation,
 				IsFirstSchedule: sch.IsFirstSchedule,
@@ -988,6 +1010,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 			DestLatitude:    currentSchedule.DestLatitude,
 			DestLongitude:   currentSchedule.DestLongitude,
 			GroupId:         currentSchedule.GroupId,
+			Transportation:  currentSchedule.Transportation,
 			Priority:        currentSchedule.Priority,
 			IsHaveLocation:  currentSchedule.IsHaveLocation,
 			IsFirstSchedule: currentSchedule.IsFirstSchedule,
@@ -1038,12 +1061,16 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 					newDate = newDate.AddDate(0, 0, -1)
 				}
 
+				if allSchedules[i-1].Transportation != "walking" && allSchedules[i-1].Transportation != "driving" && allSchedules[i-1].Transportation != "transit" {
+					allSchedules[i-1].Transportation = "driving"
+				}
 				if sch.IsTraveling {
 					travelTimeText, err := s.scheduleRepo.GetTravelTime(
 						fmt.Sprintf("%f", allSchedules[i-1].OriLatitude),
 						fmt.Sprintf("%f", allSchedules[i-1].OriLongitude),
 						fmt.Sprintf("%f", allSchedules[i-1].DestLatitude),
 						fmt.Sprintf("%f", allSchedules[i-1].DestLongitude),
+						allSchedules[i-1].Transportation,
 						"now",
 					)
 
@@ -1078,6 +1105,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 					DestLatitude:    sch.DestLatitude,
 					DestLongitude:   sch.DestLongitude,
 					GroupId:         sch.GroupId,
+					Transportation:  sch.Transportation,
 					Priority:        sch.Priority,
 					IsHaveLocation:  sch.IsHaveLocation,
 					IsFirstSchedule: sch.IsFirstSchedule,
@@ -1114,7 +1142,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 		updateMessage := updatedSchedule
 		message, _ := json.Marshal(updateMessage)
 		websocket.SendUpdate(message)
-		
+
 		if currentSchedule.Recurrence == "daily" {
 			inputDate = inputDate.AddDate(0, 0, 1)
 		} else if currentSchedule.Recurrence == "weekly" {
