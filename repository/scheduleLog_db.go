@@ -24,8 +24,8 @@ func (s *scheduleLogRepositoryDB) GetUpcomingSchedules() ([]int, error) {
 	var groupIds []int
 
 	now := time.Now().UTC().Add(7 * time.Hour)
-	currentTime := now.Format("15:04")
-	minuteLater := now.Add(1 * time.Minute).Format("15:04")
+	currentTime := now
+	minuteLater := now.Add(1 * time.Minute)
 	today := now.Format("02-01-2006")
 	filter := bson.M{
 		"date": today,

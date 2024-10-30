@@ -153,7 +153,11 @@ func (s *scheduleRepositoryDB) GetAllSchedules(gId string, date string) ([]*Sche
 
 	filter := bson.M{"googleId": gId}
 	if date != "" {
-		filter["date"] = date
+		parsedDate, err := time.Parse("02-01-2006", date)
+		if err != nil {
+			return nil, fmt.Errorf("invalid date format: %v", err)
+		}
+		filter["date"] = parsedDate
 	}
 
 	cursor, err := s.collection.Find(ctx, filter, options.Find().SetSort(bson.D{
@@ -237,7 +241,11 @@ func (s *scheduleRepositoryDB) GetSchedulesByRecurrenceId(recurrenceId int, date
 		"recurrence":   bson.M{"$ne": ""},
 	}
 	if date != "" {
-		filter["date"] = bson.M{"$gte": date}
+		parsedDate, err := time.Parse("02-01-2006", date)
+		if err != nil {
+			return nil, fmt.Errorf("invalid date format: %v", err)
+		}
+		filter["date"] = bson.M{"$gte": parsedDate}
 	}
 
 	cursor, err := s.collection.Find(ctx, filter, options.Find().SetSort(bson.D{
@@ -337,7 +345,11 @@ func (s *scheduleRepositoryDB) DeleteScheduleByRecurrenceId(recurrenceId int, da
 	ctx := context.Background()
 	filter := bson.M{"recurrenceId": recurrenceId}
 	if date != "" {
-		filter["date"] = bson.M{"$gte": date}
+		parsedDate, err := time.Parse("02-01-2006", date)
+		if err != nil {
+			return fmt.Errorf("invalid date format: %v", err)
+		}
+		filter["date"] = bson.M{"$gte": parsedDate}
 	}
 
 	_, err := s.collection.DeleteMany(ctx, filter)

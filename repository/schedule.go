@@ -1,29 +1,31 @@
 package repository
 
-type Schedule struct {
-	Id              string  `bson:"_id,omitempty"`
-	GoogleId        string  `bson:"googleId"`
-	RoutineId       string  `bson:"routineId"`
-	Name            string  `bson:"name"`
-	Date            string  `bson:"date"`
-	StartTime       string  `bson:"startTime"`
-	EndTime         string  `bson:"endTime"`
-	IsHaveEndTime   bool    `bson:"isHaveEndTime"`
-	OriName         string  `bson:"oriName"`
-	OriLatitude     float64 `bson:"oriLatitude"`
-	OriLongitude    float64 `bson:"oriLongitude"`
-	DestName        string  `bson:"destName"`
-	DestLatitude    float64 `bson:"destLatitude"`
-	DestLongitude   float64 `bson:"destLongitude"`
-	GroupId         int     `bson:"groupId"`
-	Priority        int     `bson:"priority"`
-	IsHaveLocation  bool    `bson:"isHaveLocation"`
-	IsFirstSchedule bool    `bson:"isFirstSchedule"`
-	IsTraveling     bool    `bson:"isTraveling"`
-	IsUpdated       bool    `bson:"isUpdated"`
+import "time"
 
-	Recurrence      string  `bson:"recurrence"`
-	RecurrenceId    int     `bson:"recurrenceId"`
+type Schedule struct {
+	Id              string    `bson:"_id,omitempty"`
+	GoogleId        string    `bson:"googleId"`
+	RoutineId       string    `bson:"routineId"`
+	Name            string    `bson:"name"`
+	Date            time.Time `bson:"date"`
+	StartTime       string    `bson:"startTime"`
+	EndTime         string    `bson:"endTime"`
+	IsHaveEndTime   bool      `bson:"isHaveEndTime"`
+	OriName         string    `bson:"oriName"`
+	OriLatitude     float64   `bson:"oriLatitude"`
+	OriLongitude    float64   `bson:"oriLongitude"`
+	DestName        string    `bson:"destName"`
+	DestLatitude    float64   `bson:"destLatitude"`
+	DestLongitude   float64   `bson:"destLongitude"`
+	GroupId         int       `bson:"groupId"`
+	Priority        int       `bson:"priority"`
+	IsHaveLocation  bool      `bson:"isHaveLocation"`
+	IsFirstSchedule bool      `bson:"isFirstSchedule"`
+	IsTraveling     bool      `bson:"isTraveling"`
+	IsUpdated       bool      `bson:"isUpdated"`
+
+	Recurrence   string `bson:"recurrence"`
+	RecurrenceId int    `bson:"recurrenceId"`
 }
 
 type Counter struct {

@@ -1,5 +1,7 @@
 package repository
 
+import "time"
+
 type ScheduleLog struct {
 	Id            string  `bson:"_id,omitempty"`
 	GroupId       int     `bson:"groupId"`
@@ -8,7 +10,7 @@ type ScheduleLog struct {
 	OriLongitude  float64 `bson:"oriLongitude"`
 	DestLatitude  float64 `bson:"destLatitude"`
 	DestLongitude float64 `bson:"destLongitude"`
-	Date          string  `bson:"date"`
+	Date          time.Time  `bson:"date"`
 	CheckTime     string  `bson:"checkTime"`
 }
 

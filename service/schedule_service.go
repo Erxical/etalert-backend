@@ -177,10 +177,15 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error
 	}
 	schedule.RecurrenceId = recurrenceId
 
+	parsedDate, err := time.Parse("02-01-2006", schedule.Date)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse date: %v", err)
+	}
+
 	err = s.scheduleRepo.InsertSchedule(&repository.Schedule{
 		GoogleId:        schedule.GoogleId,
 		Name:            schedule.Name,
-		Date:            schedule.Date,
+		Date:            parsedDate,
 		StartTime:       schedule.StartTime,
 		EndTime:         schedule.EndTime,
 		IsHaveEndTime:   schedule.IsHaveEndTime,
@@ -261,13 +266,18 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 	}
 	schedule.StartTime = leaveTime.Format("15:04")
 
+	parsedDate, err := time.Parse("02-01-2006", schedule.Date)
+	if err != nil {
+		return err
+	}
+
 	leaveSchedule := &repository.Schedule{
 		GoogleId:        schedule.GoogleId,
 		Name:            "Leave From " + schedule.OriName,
-		Date:            schedule.Date,
+		Date:            parsedDate,
 		StartTime:       schedule.StartTime,
 		EndTime:         arriveTime.Format("15:04"),
-		IsHaveEndTime:   false,
+		IsHaveEndTime:   true,
 		OriName:         schedule.OriName,
 		OriLatitude:     schedule.OriLatitude,
 		OriLongitude:    schedule.OriLongitude,
@@ -294,7 +304,7 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 		OriLongitude:  schedule.OriLongitude,
 		DestLatitude:  schedule.DestLatitude,
 		DestLongitude: schedule.DestLongitude,
-		Date:          schedule.Date,
+		Date:          parsedDate,
 		CheckTime:     leaveTime.Add(-travelDuration).Format("15:04"),
 	}
 
@@ -346,11 +356,16 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 				}
 			}
 
+			parsedDate, err := time.Parse("02-01-2006", schedule.Date)
+			if err != nil {
+				return "", fmt.Errorf("failed to parse schedule date: %v", err)
+			}
+
 			newRoutineSchedule := &repository.Schedule{
 				GoogleId:        schedule.GoogleId,
 				RoutineId:       routine.Id,
 				Name:            routine.Name,
-				Date:            schedule.Date,
+				Date:            parsedDate,
 				StartTime:       currentStartTime.Format("15:04"),
 				EndTime:         currentEndTime.Format("15:04"),
 				GroupId:         schedule.GroupId,
@@ -382,10 +397,15 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 		return "", fmt.Errorf("failed to parse predefined bedtime: %v", err)
 	}
 
+	parsedDate, err := time.Parse("02-01-2006", schedule.Date)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse schedule date: %v", err)
+	}
+
 	bedtimeSchedule := &repository.Schedule{
 		GoogleId:        schedule.GoogleId,
 		Name:            "Wake up",
-		Date:            schedule.Date,
+		Date:            parsedDate,
 		StartTime:       bedtimeStartTime.Format("15:04"),
 		GroupId:         schedule.GroupId,
 		IsHaveEndTime:   false,
@@ -465,10 +485,15 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 		}
 		schedule.GroupId = groupId
 
+		parsedDate, err := time.Parse("02-01-2006", date)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse schedule date: %v", err)
+		}
+
 		mainSchedule := repository.Schedule{
 			GoogleId:        schedule.GoogleId,
 			Name:            schedule.Name,
-			Date:            date,
+			Date:            parsedDate,
 			StartTime:       schedule.StartTime,
 			EndTime:         schedule.EndTime,
 			IsHaveEndTime:   schedule.IsHaveEndTime,
@@ -506,10 +531,16 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 					date = newDate.Format("02-01-2006")
 				}
 			}
+
+			parsedDate, err := time.Parse("02-01-2006", date)
+			if err != nil {
+				return "", fmt.Errorf("failed to parse schedule date: %v", err)
+			}
+
 			travelSchedule := repository.Schedule{
 				GoogleId:        schedule.GoogleId,
 				Name:            "Leave From " + schedule.OriName,
-				Date:            date,
+				Date:            parsedDate,
 				StartTime:       currentTime.Format("15:04"),
 				EndTime:         mainSchedule.StartTime,
 				IsHaveEndTime:   true,
@@ -535,7 +566,7 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 				OriLongitude:  schedule.OriLongitude,
 				DestLatitude:  schedule.DestLatitude,
 				DestLongitude: schedule.DestLongitude,
-				Date:          date,
+				Date:          parsedDate,
 				CheckTime:     currentTime.Format("15:04"),
 			}
 			scheduleLogs = append(scheduleLogs, scheduleLog)
@@ -566,11 +597,16 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 							date = newDate.Format("02-01-2006")
 						}
 					}
+
+					parsedDate, err := time.Parse("02-01-2006", date)
+					if err != nil {
+						return "", fmt.Errorf("failed to parse schedule date: %v", err)
+					}
 					routineSchedule := repository.Schedule{
 						GoogleId:        schedule.GoogleId,
 						RoutineId:       routine.Id,
 						Name:            routine.Name,
-						Date:            date,
+						Date:            parsedDate,
 						StartTime:       currentTime.Format("15:04"),
 						EndTime:         endTime.Format("15:04"),
 						GroupId:         schedule.GroupId,
@@ -588,7 +624,7 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 			bedtimeSchedule := repository.Schedule{
 				GoogleId:        schedule.GoogleId,
 				Name:            "Wake up",
-				Date:            date,
+				Date:            parsedDate,
 				StartTime:       bedtimeStartTime.Format("15:04"),
 				GroupId:         schedule.GroupId,
 				IsHaveEndTime:   false,
@@ -685,7 +721,7 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 			Id:              schedule.Id,
 			RoutineId:       schedule.RoutineId,
 			Name:            schedule.Name,
-			Date:            schedule.Date,
+			Date:            schedule.Date.Format("02-01-2006"),
 			StartTime:       schedule.StartTime,
 			EndTime:         schedule.EndTime,
 			IsHaveEndTime:   schedule.IsHaveEndTime,
@@ -720,7 +756,7 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 		Id:              schedule.Id,
 		RoutineId:       schedule.RoutineId,
 		Name:            schedule.Name,
-		Date:            schedule.Date,
+		Date:            schedule.Date.Format("02-01-2006"),
 		StartTime:       schedule.StartTime,
 		EndTime:         schedule.EndTime,
 		IsHaveEndTime:   schedule.IsHaveEndTime,
@@ -749,12 +785,16 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 	}
 
 	// Prepare the updated schedule structure
+	parsedDate, err := time.Parse("02-01-2006", schedule.Date)
+	if err != nil {
+		return fmt.Errorf("failed to parse date: %v", err)
+	}
 	updatedSchedule := &repository.Schedule{
 		Id:              currentSchedule.Id,
 		RoutineId:       currentSchedule.RoutineId,
 		GoogleId:        currentSchedule.GoogleId,
 		Name:            schedule.Name,
-		Date:            schedule.Date,
+		Date:            parsedDate,
 		StartTime:       schedule.StartTime,
 		EndTime:         schedule.EndTime,
 		IsHaveEndTime:   schedule.IsHaveEndTime,
@@ -790,7 +830,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 			return fmt.Errorf("failed to parse new start time: %v", err)
 		}
 
-		date := updatedSchedule.Date
+		date := parsedDate
 
 		for i := 1; i < len(allSchedules); i++ {
 			sch := allSchedules[i]
@@ -820,11 +860,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 			currentStartTime = currentStartTime.Add(-duration)
 
 			if currentStartTime.Year() < endTime.Year() {
-				newDate, err := time.Parse("02-01-2006", sch.Date)
-				if err == nil {
-					newDate = newDate.AddDate(0, 0, -1)
-					date = newDate.Format("02-01-2006")
-				}
+				date = date.AddDate(0, 0, -1)
 			}
 
 			if sch.IsTraveling {
@@ -840,19 +876,13 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 					return fmt.Errorf("failed to get travel time: %v", err)
 				}
 
-				startTime, err := time.Parse("15:04", schedule.StartTime)
-				if err != nil {
-					return fmt.Errorf("failed to parse start time: %v", err)
-				}
-
 				travelDuration, err := parseDuration(travelTimeText)
 				if err != nil {
 					return fmt.Errorf("failed to parse travel duration: %v", err)
 				}
 
-				leaveTime := startTime.Add(-travelDuration).Add(duration)
+				leaveTime := endTime.Add(-travelDuration)
 				currentStartTime = leaveTime
-				// sch.EndTime = ""
 			}
 
 			// Update the schedule times
@@ -893,7 +923,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 			updateMessage := map[string]interface{}{
 				"id":            sch.Id,
 				"name":          sch.Name,
-				"date":          sch.Date,
+				"date":          date,
 				"startTime":     sch.StartTime,
 				"endTime":       sch.EndTime,
 				"isHaveEndTime": sch.IsHaveEndTime,
@@ -931,31 +961,23 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 		return fmt.Errorf("failed to get next recurrence ID: %v", err)
 	}
 
+	inputDate, err := time.Parse("02-01-2006", inputSchedule.Date)
+	if err != nil {
+		return fmt.Errorf("failed to parse input schedule date: %v", err)
+	}
+
 	for _, schedule := range schedules {
 		currentSchedule, err := s.scheduleRepo.GetScheduleById(schedule.Id)
 		if err != nil {
 			return fmt.Errorf("failed to fetch current schedule: %v", err)
 		}
 
-		inputDate, err := time.Parse("02-01-2006", inputSchedule.Date)
-		if err != nil {
-			return fmt.Errorf("failed to parse input schedule date: %v", err)
-		}
-
-		currentDate, err := time.Parse("02-01-2006", currentSchedule.Date)
-		if err != nil {
-			return fmt.Errorf("failed to parse current schedule date: %v", err)
-		}
-
-		finalDate := time.Date(currentDate.Year(), inputDate.Month(), inputDate.Day(), 0, 0, 0, 0, time.UTC)
-		combinedDate := finalDate.Format("02-01-2006")
-
 		updatedSchedule := &repository.Schedule{
 			Id:              currentSchedule.Id,
 			RoutineId:       currentSchedule.RoutineId,
 			GoogleId:        currentSchedule.GoogleId,
 			Name:            inputSchedule.Name,
-			Date:            combinedDate,
+			Date:            inputDate,
 			StartTime:       inputSchedule.StartTime,
 			EndTime:         inputSchedule.EndTime,
 			IsHaveEndTime:   inputSchedule.IsHaveEndTime,
@@ -987,6 +1009,8 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 				return fmt.Errorf("failed to parse new start time: %v", err)
 			}
 
+			newDate := inputDate
+
 			for i := 1; i < len(allSchedules); i++ {
 				sch := allSchedules[i]
 
@@ -1011,11 +1035,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 				currentStartTime = currentStartTime.Add(-duration)
 
 				if currentStartTime.Year() < endTime.Year() {
-					newDate, err := time.Parse("02-01-2006", sch.Date)
-					if err == nil {
-						newDate = newDate.AddDate(0, 0, -1)
-						date = newDate.Format("02-01-2006")
-					}
+					newDate = newDate.AddDate(0, 0, -1)
 				}
 
 				if sch.IsTraveling {
@@ -1031,19 +1051,13 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 						return fmt.Errorf("failed to get travel time: %v", err)
 					}
 
-					startTime, err := time.Parse("15:04", schedule.StartTime)
-					if err != nil {
-						return fmt.Errorf("failed to parse start time: %v", err)
-					}
-
 					travelDuration, err := parseDuration(travelTimeText)
 					if err != nil {
 						return fmt.Errorf("failed to parse travel duration: %v", err)
 					}
 
-					leaveTime := startTime.Add(-travelDuration).Add(duration)
+					leaveTime := endTime.Add(-travelDuration)
 					currentStartTime = leaveTime
-					sch.EndTime = ""
 				}
 
 				sch.StartTime = currentStartTime.Format("15:04")
@@ -1053,7 +1067,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 					RoutineId:       sch.RoutineId,
 					GoogleId:        sch.GoogleId,
 					Name:            sch.Name,
-					Date:            date,
+					Date:            newDate,
 					StartTime:       sch.StartTime,
 					EndTime:         sch.EndTime,
 					IsHaveEndTime:   sch.IsHaveEndTime,
@@ -1082,7 +1096,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 				updateMessage := map[string]interface{}{
 					"id":            sch.Id,
 					"name":          sch.Name,
-					"date":          sch.Date,
+					"date":          newDate,
 					"startTime":     sch.StartTime,
 					"endTime":       sch.EndTime,
 					"isHaveEndTime": sch.IsHaveEndTime,
@@ -1100,7 +1114,16 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 		updateMessage := updatedSchedule
 		message, _ := json.Marshal(updateMessage)
 		websocket.SendUpdate(message)
-
+		
+		if currentSchedule.Recurrence == "daily" {
+			inputDate = inputDate.AddDate(0, 0, 1)
+		} else if currentSchedule.Recurrence == "weekly" {
+			inputDate = inputDate.AddDate(0, 0, 7)
+		} else if currentSchedule.Recurrence == "monthly" {
+			inputDate = inputDate.AddDate(0, 1, 0)
+		} else if currentSchedule.Recurrence == "yearly" {
+			inputDate = inputDate.AddDate(1, 0, 0)
+		}
 	}
 
 	return nil

@@ -181,6 +181,7 @@ func (h *ScheduleHandler) UpdateScheduleByRecurrenceId(c *fiber.Ctx) error {
 
 	err := h.schedulesrv.UpdateScheduleByRecurrenceId(recurrenceId, schedule, date)
 	if err != nil {
+		fmt.Println(err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update schedule"})
 	}
 
