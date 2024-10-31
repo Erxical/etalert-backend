@@ -76,7 +76,6 @@ func (w *weeklyReportService) generateWeeklyReport() {
 					Name:      routine.Name,
 					StartDate: aWeekAgo.Format("02-01-2006"),
 					EndDate:   now.AddDate(0, 0, -1).Format("02-01-2006"),
-					Days:      routine.Days,
 					Details:   weeklyReportDetails,
 				}
 				w.weeklyReportRepo.InsertWeeklyReport(weeklyReport)
@@ -101,7 +100,6 @@ func (w *weeklyReportService) GetWeeklyReports(googleId string, date string) ([]
 			Name:      weeklyReport.Name,
 			StartDate: weeklyReport.StartDate,
 			EndDate:   weeklyReport.EndDate,
-			Days:      weeklyReport.Days,
 			Details:   weeklyReport.Details,
 		})
 	}

@@ -2,7 +2,6 @@ package service
 
 import (
 	"etalert-backend/repository"
-	"sort"
 )
 
 type routineService struct {
@@ -20,7 +19,6 @@ func (s routineService) InsertRoutine(routine *RoutineInput) error {
 		Name:     routine.Name,
 		Duration: routine.Duration,
 		Order:    routine.Order,
-		Days:     routine.Days,
 	})
 	if err != nil {
 		return err
@@ -29,16 +27,6 @@ func (s routineService) InsertRoutine(routine *RoutineInput) error {
 }
 
 func (s *routineService) GetAllRoutines(gId string) ([]*RoutineResponse, error) {
-	dayOrder := map[string]int{
-		"Sunday":    0,
-		"Monday":    1,
-		"Tuesday":   2,
-		"Wednesday": 3,
-		"Thursday":  4,
-		"Friday":    5,
-		"Saturday":  6,
-	}
-
 	routines, err := s.routineRepo.GetAllRoutines(gId)
 	if err != nil {
 		return nil, err
@@ -49,15 +37,11 @@ func (s *routineService) GetAllRoutines(gId string) ([]*RoutineResponse, error) 
 
 	// Iterate over the routines to map each one to a RoutineResponse
 	for _, routine := range routines {
-		sort.Slice(routine.Days, func(i, j int) bool {
-			return dayOrder[routine.Days[i]] < dayOrder[routine.Days[j]]
-		})
 		routineResponses = append(routineResponses, &RoutineResponse{
 			Id:       routine.Id,
 			Name:     routine.Name,
 			Duration: routine.Duration,
 			Order:    routine.Order,
-			Days:     routine.Days,
 		})
 	}
 
@@ -69,7 +53,6 @@ func (s *routineService) UpdateRoutine(id string, routine *RoutineUpdateInput) e
 		Name:     routine.Name,
 		Duration: routine.Duration,
 		Order:    routine.Order,
-		Days:     routine.Days,
 	})
 	if err != nil {
 		return err

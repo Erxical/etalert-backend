@@ -5,7 +5,6 @@ type RoutineInput struct {
 	Name     string   `bson:"name"`
 	Duration int      `bson:"duration"`
 	Order    int      `bson:"order"`
-	Days     []string `bson:"days"`
 }
 
 type RoutineResponse struct {
@@ -13,14 +12,12 @@ type RoutineResponse struct {
 	Name     string   `bson:"name"`
 	Duration int      `bson:"duration"`
 	Order    int      `bson:"order"`
-	Days     []string `bson:"days"`
 }
 
 type RoutineUpdateInput struct {
 	Name     string   `bson:"name"`
 	Duration int      `bson:"duration"`
 	Order    int      `bson:"order"`
-	Days     []string `bson:"days"`
 }
 
 type RoutineService interface {

@@ -17,7 +17,6 @@ type createRoutineRequest struct {
 	Name     string   `json:"name" validate:"required"`
 	Duration int      `json:"duration" validate:"required"`
 	Order    int      `json:"order" validate:"required"`
-	Days     []string `json:"days" validate:"required"`
 }
 
 type createRoutineResponse struct {
@@ -43,7 +42,6 @@ func (h *RoutineHandler) CreateRoutine(c *fiber.Ctx) error {
 		Name:     req.Name,
 		Duration: req.Duration,
 		Order:    req.Order,
-		Days:     req.Days,
 	}
 
 	err := h.routinesrv.InsertRoutine(routine)
@@ -82,7 +80,6 @@ func (h *RoutineHandler) UpdateRoutine(c *fiber.Ctx) error {
 		Name:     req.Name,
 		Duration: req.Duration,
 		Order:    req.Order,
-		Days:     req.Days,
 	}
 
 	err := h.routinesrv.UpdateRoutine(id, routine)

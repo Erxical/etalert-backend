@@ -6,7 +6,6 @@ type Routine struct {
 	Name     string   `bson:"name"`
 	Duration int      `bson:"duration"`
 	Order    int      `bson:"order"`
-	Days     []string `bson:"days"`
 }
 
 type RoutineRepository interface {

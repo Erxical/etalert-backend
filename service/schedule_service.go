@@ -335,12 +335,6 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 		return "", fmt.Errorf("failed to fetch user routines: %v", err)
 	}
 
-	scheduleDate, err := time.Parse("02-01-2006", schedule.Date)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse schedule date: %v", err)
-	}
-	scheduleDay := scheduleDate.Weekday().String()
-
 	currentStartTime, err := time.Parse("15:04", schedule.StartTime)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse first schedule start time: %v", err)
@@ -348,49 +342,47 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 
 	for i := len(routines) - 1; i >= 0; i-- {
 		routine := routines[i]
-		if containsDay(routine.Days, scheduleDay) {
-			routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
-			if err != nil {
-				return "", fmt.Errorf("failed to parse routine duration: %v", err)
-			}
+		routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
+		if err != nil {
+			return "", fmt.Errorf("failed to parse routine duration: %v", err)
+		}
 
-			currentEndTime := currentStartTime
-			currentStartTime = currentStartTime.Add(-routineDuration)
+		currentEndTime := currentStartTime
+		currentStartTime = currentStartTime.Add(-routineDuration)
 
-			if currentStartTime.Year() < currentEndTime.Year() {
-				date, err := time.Parse("02-01-2006", schedule.Date)
-				if err == nil {
-					date = date.AddDate(0, 0, -1)
-					schedule.Date = date.Format("02-01-2006")
-				}
+		if currentStartTime.Year() < currentEndTime.Year() {
+			date, err := time.Parse("02-01-2006", schedule.Date)
+			if err == nil {
+				date = date.AddDate(0, 0, -1)
+				schedule.Date = date.Format("02-01-2006")
 			}
+		}
 
-			parsedDate, err := time.Parse("02-01-2006", schedule.Date)
-			if err != nil {
-				return "", fmt.Errorf("failed to parse schedule date: %v", err)
-			}
+		parsedDate, err := time.Parse("02-01-2006", schedule.Date)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse schedule date: %v", err)
+		}
 
-			newRoutineSchedule := &repository.Schedule{
-				GoogleId:        schedule.GoogleId,
-				RoutineId:       routine.Id,
-				Name:            routine.Name,
-				Date:            parsedDate,
-				StartTime:       currentStartTime.Format("15:04"),
-				EndTime:         currentEndTime.Format("15:04"),
-				GroupId:         schedule.GroupId,
-				IsHaveEndTime:   true,
-				IsHaveLocation:  false,
-				IsFirstSchedule: false,
-				IsTraveling:     false,
-				IsUpdated:       false,
-				RecurrenceId:    schedule.RecurrenceId,
-			}
+		newRoutineSchedule := &repository.Schedule{
+			GoogleId:        schedule.GoogleId,
+			RoutineId:       routine.Id,
+			Name:            routine.Name,
+			Date:            parsedDate,
+			StartTime:       currentStartTime.Format("15:04"),
+			EndTime:         currentEndTime.Format("15:04"),
+			GroupId:         schedule.GroupId,
+			IsHaveEndTime:   true,
+			IsHaveLocation:  false,
+			IsFirstSchedule: false,
+			IsTraveling:     false,
+			IsUpdated:       false,
+			RecurrenceId:    schedule.RecurrenceId,
+		}
 
-			err = s.scheduleRepo.InsertSchedule(newRoutineSchedule)
-			if err != nil {
-				log.Printf("Failed to insert routine schedule: %v", err) // Log and continue
-				return "", fmt.Errorf("failed to insert routine schedule: %v", err)
-			}
+		err = s.scheduleRepo.InsertSchedule(newRoutineSchedule)
+		if err != nil {
+			log.Printf("Failed to insert routine schedule: %v", err) // Log and continue
+			return "", fmt.Errorf("failed to insert routine schedule: %v", err)
 		}
 	}
 
@@ -542,52 +534,44 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 		}
 
 		if schedule.IsFirstSchedule {
-			scheduleDate, err := time.Parse("02-01-2006", date)
-			if err != nil {
-				return "", fmt.Errorf("failed to parse schedule date: %v", err)
-			}
-			scheduleDay := scheduleDate.Weekday().String()
-
 			for i := len(routines) - 1; i >= 0; i-- {
 				routine := routines[i]
-				if containsDay(routine.Days, scheduleDay) {
-					routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
-					if err != nil {
-						return "", fmt.Errorf("failed to parse routine duration: %v", err)
-					}
-
-					endTime := currentTime
-					currentTime = currentTime.Add(-routineDuration)
-
-					if currentTime.Year() < endTime.Year() {
-						newDate, err := time.Parse("02-01-2006", date)
-						if err == nil {
-							newDate = newDate.AddDate(0, 0, -1)
-							date = newDate.Format("02-01-2006")
-						}
-					}
-
-					parsedDate, err := time.Parse("02-01-2006", date)
-					if err != nil {
-						return "", fmt.Errorf("failed to parse schedule date: %v", err)
-					}
-					routineSchedule := repository.Schedule{
-						GoogleId:        schedule.GoogleId,
-						RoutineId:       routine.Id,
-						Name:            routine.Name,
-						Date:            parsedDate,
-						StartTime:       currentTime.Format("15:04"),
-						EndTime:         endTime.Format("15:04"),
-						GroupId:         schedule.GroupId,
-						IsHaveEndTime:   true,
-						IsHaveLocation:  false,
-						IsFirstSchedule: false,
-						IsTraveling:     false,
-						IsUpdated:       false,
-						RecurrenceId:    schedule.RecurrenceId,
-					}
-					dateSchedules = append([]repository.Schedule{routineSchedule}, dateSchedules...)
+				routineDuration, err := parseDuration(fmt.Sprintf("%d min", routine.Duration))
+				if err != nil {
+					return "", fmt.Errorf("failed to parse routine duration: %v", err)
 				}
+
+				endTime := currentTime
+				currentTime = currentTime.Add(-routineDuration)
+
+				if currentTime.Year() < endTime.Year() {
+					newDate, err := time.Parse("02-01-2006", date)
+					if err == nil {
+						newDate = newDate.AddDate(0, 0, -1)
+						date = newDate.Format("02-01-2006")
+					}
+				}
+
+				parsedDate, err := time.Parse("02-01-2006", date)
+				if err != nil {
+					return "", fmt.Errorf("failed to parse schedule date: %v", err)
+				}
+				routineSchedule := repository.Schedule{
+					GoogleId:        schedule.GoogleId,
+					RoutineId:       routine.Id,
+					Name:            routine.Name,
+					Date:            parsedDate,
+					StartTime:       currentTime.Format("15:04"),
+					EndTime:         endTime.Format("15:04"),
+					GroupId:         schedule.GroupId,
+					IsHaveEndTime:   true,
+					IsHaveLocation:  false,
+					IsFirstSchedule: false,
+					IsTraveling:     false,
+					IsUpdated:       false,
+					RecurrenceId:    schedule.RecurrenceId,
+				}
+				dateSchedules = append([]repository.Schedule{routineSchedule}, dateSchedules...)
 			}
 		}
 

@@ -7,7 +7,6 @@ type WeeklyReportResponse struct {
 	Name      string                          `bson:"name"`
 	StartDate string                          `bson:"startDate"`
 	EndDate   string                          `bson:"endDate"`
-	Days      []string                        `bson:"days"`
 	Details   []*repository.WeeklyReportDetail `bson:"details"`
 }
 
