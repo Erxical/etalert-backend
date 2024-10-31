@@ -232,13 +232,52 @@ func (s *scheduleRepositoryDB) GetSchedulesByGroupId(groupId int) ([]*Schedule, 
 	return schedules, nil
 }
 
-func (s *scheduleRepositoryDB) GetSchedulesByRecurrenceId(recurrenceId int, date string) ([]*Schedule, error) {
+func (s *scheduleRepositoryDB) GetMainSchedulesByRecurrenceId(recurrenceId int, date string) ([]*Schedule, error) {
 	ctx := context.Background()
 	var schedules []*Schedule
 
 	filter := bson.M{
 		"recurrenceId": recurrenceId,
 		"recurrence":   bson.M{"$ne": ""},
+	}
+	if date != "" {
+		parsedDate, err := time.Parse("02-01-2006", date)
+		if err != nil {
+			return nil, fmt.Errorf("invalid date format: %v", err)
+		}
+		filter["date"] = bson.M{"$gte": parsedDate}
+	}
+
+	cursor, err := s.collection.Find(ctx, filter, options.Find().SetSort(bson.D{
+		{Key: "date", Value: 1},
+		{Key: "startTime", Value: 1},
+	}))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var schedule Schedule
+		if err := cursor.Decode(&schedule); err != nil {
+			return nil, err
+		}
+		schedules = append(schedules, &schedule)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return schedules, nil
+}
+
+func (s *scheduleRepositoryDB) GetSchedulesByRecurrenceId(recurrenceId int, date string) ([]*Schedule, error) {
+	ctx := context.Background()
+	var schedules []*Schedule
+
+	filter := bson.M{
+		"recurrenceId": recurrenceId,
 	}
 	if date != "" {
 		parsedDate, err := time.Parse("02-01-2006", date)

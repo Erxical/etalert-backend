@@ -120,6 +120,7 @@ func main() {
 	protected.Get("/schedules/all/:googleId/:date?", scheduleHandler.GetAllSchedules)
 	protected.Get("/schedules/:id", scheduleHandler.GetScheduleById)
 	protected.Get("/schedules/group/:groupId", scheduleHandler.GetSchedulesByGroupId)
+	protected.Get("/schedules/recurrence/:recurrenceId/:date?", scheduleHandler.GetSchedulesIdByRecurrenceId)
 	protected.Patch("/schedules/:id", scheduleHandler.UpdateSchedule)
 	protected.Patch(("/schedules/recurrence/:recurrenceId/:date?"), scheduleHandler.UpdateScheduleByRecurrenceId)
 	protected.Delete("/schedules/:groupId", scheduleHandler.DeleteSchedule)

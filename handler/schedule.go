@@ -133,6 +133,20 @@ func (h *ScheduleHandler) GetScheduleById(c *fiber.Ctx) error {
 	return c.JSON(schedule)
 }
 
+func (h *ScheduleHandler) GetSchedulesIdByRecurrenceId(c *fiber.Ctx) error {
+	recurrenceId := c.Params("recurrenceId")
+	date := c.Params("date", "")
+
+	schedules, err := h.schedulesrv.GetSchedulesIdByRecurrenceId(recurrenceId, date)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get schedule"})
+	}
+	if len(schedules) == 0 {
+		return c.JSON([]interface{}{})
+	}
+	return c.JSON(schedules)
+}
+
 func (h *ScheduleHandler) GetSchedulesByGroupId(c *fiber.Ctx) error {
 	groupId := c.Params("groupId")
 

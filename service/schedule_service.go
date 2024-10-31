@@ -812,6 +812,25 @@ func (s *scheduleService) GetSchedulesByGroupId(groupId string) ([]string, error
 	return scheduleIds, nil
 }
 
+func (s *scheduleService) GetSchedulesIdByRecurrenceId(recurrenceId string, date string) ([]string, error) {
+	id, err := strconv.Atoi(recurrenceId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse recurrence ID: %v", err)
+	}
+	schedules, err := s.scheduleRepo.GetSchedulesByRecurrenceId(id, date)
+	if err != nil {
+		return nil, err
+	}
+
+	var scheduleIds []string
+
+	for _, schedule := range schedules {
+		scheduleIds = append(scheduleIds, schedule.Id)
+	}
+
+	return scheduleIds, nil
+}
+
 func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInput) error {
 	// Fetch the current schedule by ID
 	currentSchedule, err := s.scheduleRepo.GetScheduleById(id)
@@ -992,7 +1011,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 	if err != nil {
 		return fmt.Errorf("invalid recurrenceId: %v", err)
 	}
-	schedules, err := s.scheduleRepo.GetSchedulesByRecurrenceId(id, date)
+	schedules, err := s.scheduleRepo.GetMainSchedulesByRecurrenceId(id, date)
 	if err != nil {
 		return fmt.Errorf("failed to get schedules by recurrence ID: %v", err)
 	}

@@ -44,6 +44,7 @@ type ScheduleRepository interface {
 	GetAllSchedules(gId string, date string) ([]*Schedule, error)
 	GetScheduleById(id string) (*Schedule, error)
 	GetSchedulesByGroupId(groupId int) ([]*Schedule, error)
+	GetMainSchedulesByRecurrenceId(recurrenceId int, date string) ([]*Schedule, error)
 	GetSchedulesByRecurrenceId(recurrenceId int, date string) ([]*Schedule, error)
 	UpdateSchedule(id string, schedule *Schedule) error
 	UpdateScheduleTime(id string, startTime string, endTime string) error
