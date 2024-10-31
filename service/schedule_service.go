@@ -394,47 +394,6 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 		}
 	}
 
-	bedtimeStartTime := currentStartTime.Add(-5 * time.Minute)
-
-	predefinedBedtime, err := s.bedtimeRepo.GetBedtimeInfo(schedule.GoogleId)
-	if err != nil {
-		return "", fmt.Errorf("failed to get predefined bedtime: %v", err)
-	}
-
-	predefinedBedtimeTime, err := time.Parse("15:04", predefinedBedtime.WakeTime)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse predefined bedtime: %v", err)
-	}
-
-	parsedDate, err := time.Parse("02-01-2006", schedule.Date)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse schedule date: %v", err)
-	}
-
-	bedtimeSchedule := &repository.Schedule{
-		GoogleId:        schedule.GoogleId,
-		Name:            "Wake up",
-		Date:            parsedDate,
-		StartTime:       bedtimeStartTime.Format("15:04"),
-		GroupId:         schedule.GroupId,
-		IsHaveEndTime:   false,
-		IsHaveLocation:  false,
-		IsFirstSchedule: false,
-		IsTraveling:     false,
-		IsUpdated:       false,
-		RecurrenceId:    schedule.RecurrenceId,
-	}
-
-	err = s.scheduleRepo.InsertSchedule(bedtimeSchedule)
-	if err != nil {
-		log.Printf("Failed to insert bedtime schedule: %v", err) // Log and continue
-		return "", fmt.Errorf("failed to insert bedtime schedule: %v", err)
-	}
-
-	if bedtimeStartTime.Before(predefinedBedtimeTime) {
-		return "(auto-calculated bedtime is earlier than the predefined bedtime)", nil
-	}
-
 	return "", nil
 }
 
@@ -630,22 +589,6 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 					dateSchedules = append([]repository.Schedule{routineSchedule}, dateSchedules...)
 				}
 			}
-			bedtimeStartTime := currentTime.Add(-5 * time.Minute)
-			bedtimeSchedule := repository.Schedule{
-				GoogleId:        schedule.GoogleId,
-				Name:            "Wake up",
-				Date:            parsedDate,
-				StartTime:       bedtimeStartTime.Format("15:04"),
-				GroupId:         schedule.GroupId,
-				IsHaveEndTime:   false,
-				IsHaveLocation:  false,
-				IsFirstSchedule: false,
-				IsTraveling:     false,
-				IsUpdated:       false,
-				RecurrenceId:    schedule.RecurrenceId,
-			}
-
-			dateSchedules = append([]repository.Schedule{bedtimeSchedule}, dateSchedules...)
 		}
 
 		allSchedules = append(allSchedules, dateSchedules...)
