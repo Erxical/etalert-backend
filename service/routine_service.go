@@ -13,7 +13,6 @@ func NewRoutineService(routineRepo repository.RoutineRepository) RoutineService 
 }
 
 func (s routineService) InsertRoutine(routine *RoutineInput) error {
-
 	err := s.routineRepo.InsertRoutine(&repository.Routine{
 		GoogleId: routine.GoogleId,
 		Name:     routine.Name,

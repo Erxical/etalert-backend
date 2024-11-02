@@ -8,7 +8,6 @@ import (
 	"log"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -387,15 +386,6 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 	}
 
 	return "", nil
-}
-
-func containsDay(days []string, day string) bool {
-	for _, d := range days {
-		if strings.EqualFold(d, day) {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (string, error) {

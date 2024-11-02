@@ -56,6 +56,23 @@ func (r *routineRepositoryDB) GetAllRoutines(gId string) ([]*Routine, error) {
     return routines, nil
 }
 
+func (r *routineRepositoryDB) GetRoutineById(id string) (*Routine, error) {
+	ctx := context.Background()
+
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert ID: %v", err)
+	}
+	filter := bson.M{"_id": objectId}
+	
+	routine := &Routine{}
+	err = r.collection.FindOne(ctx, filter).Decode(routine)
+	if err != nil {
+		return nil, err
+	}
+	return routine, nil
+}
+
 func (r *routineRepositoryDB) UpdateRoutine(id string, routine *Routine) error {
 	ctx := context.Background()
 

@@ -54,6 +54,10 @@ func main() {
 	routineService := service.NewRoutineService(routineRepository)
 	routineHandler := handler.NewRoutineHandler(routineService)
 
+	tagRepository := repository.NewTagRepositoryDB(client, "etalert", "tag")
+	tagService := service.NewTagService(tagRepository, routineRepository)
+	tagHandler := handler.NewTagHandler(tagService)
+
 	weeklyReportListRepository := repository.NewWeeklyReportListRepositoryDB(client, "etalert", "weeklyReportList")
 	weeklyReportListService := service.NewWeeklyReportListService(weeklyReportListRepository)
 	weeklyReportListHandler := handler.NewWeeklyReportListHandler(weeklyReportListService)
@@ -108,6 +112,13 @@ func main() {
 	protected.Post("/routine-logs", routineLogHandler.InsertRoutineLog)
 	protected.Get("/routine-logs/:googleId/:date?", routineLogHandler.GetRoutineLogs)
 	protected.Delete("/routine-logs/:id", routineLogHandler.DeleteRoutineLog)
+
+	//Tag routes
+	protected.Post("/tags", tagHandler.CreateTag)
+	protected.Get("/tags/:googleId", tagHandler.GetAllTags)
+	protected.Get("/tags/routines/:id", tagHandler.GetRoutinesByTagId)
+	protected.Patch("/tags/:id", tagHandler.UpdateTag)
+	protected.Delete("/tags/:id", tagHandler.DeleteTag)
 
 	//WeeklyReport routes
 	protected.Get("/weekly-reports/:googleId/:date", weeklyReportHandler.GetWeeklyReports)

@@ -11,6 +11,7 @@ type Routine struct {
 type RoutineRepository interface {
 	InsertRoutine(routine *Routine) error
 	GetAllRoutines(string) ([]*Routine, error)
+	GetRoutineById(string) (*Routine, error)
 	UpdateRoutine(string, *Routine) error
 	DeleteRoutine(string) error
 }
