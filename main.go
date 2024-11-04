@@ -78,11 +78,6 @@ func main() {
 
 	scheduleService.StartCronJob()
 	weeklyReportService.StartCronJob()
-	test, err := scheduleService.GetTraffic("13.6521051", "100.4004271", "13.6246723", "100.3684675")
-	if err != nil {
-		fmt.Print(err)
-	}
-	fmt.Println(test)
 
 	// initialize new instance of fiber
 	server := fiber.New()

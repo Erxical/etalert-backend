@@ -100,6 +100,32 @@ func (s *scheduleRepositoryDB) GetTraffic(minLat float64, minLong float64, maxLa
 	return trafficData, nil
 }
 
+func (s *scheduleRepositoryDB) GetWeather(oriLat string, oriLong string, destLat string, destLong string, travelTime string) (Forecast, error) {
+	godotenv.Load()
+	apiKey := os.Getenv("AZURE_MAP_API_KEY")
+	url := fmt.Sprintf("https://atlas.microsoft.com/weather/route/json?subscription-key=%s&api-version=1.1&query=%s,%s,0:%s,%s,%s", apiKey, oriLat, oriLong, destLat, destLong, travelTime)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	response, err := client.Get(url)
+	if err != nil {
+		return Forecast{}, fmt.Errorf("failed to fetch weather data: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return Forecast{}, fmt.Errorf("received non-200 response status: %d", response.StatusCode)
+	}
+
+	var weatherData Forecast
+	err = json.NewDecoder(response.Body).Decode(&weatherData)
+	if err != nil {
+		return Forecast{}, fmt.Errorf("failed to parse response: %v", err)
+	}
+
+	return weatherData, nil
+}
+
 func (s *scheduleRepositoryDB) GetNextGroupId() (int, error) {
 	var counter Counter
 	ctx := context.Background()

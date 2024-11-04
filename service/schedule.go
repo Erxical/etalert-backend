@@ -68,9 +68,16 @@ type Traffic struct {
 	ToRoad      string `bson:"toRoad"`
 }
 
+type Weather struct {
+	Hazard            int    `bson:"hazard"`
+	Weather           string `bson:"weather"`
+	PrecipitationType string `bson:"precipitationType"`
+}
+
 type ScheduleService interface {
 	StartCronJob()
 	GetTraffic(oriLat string, oriLong string, destLat string, destLong string) ([]Traffic, error)
+	GetWeather(oriLat string, oriLong string, destLat string, destLong string, travelTime string) ([]Weather, error)
 	InsertSchedule(schedule *ScheduleInput) (string, error)
 	InsertRecurrenceSchedule(schedule *ScheduleInput) (string, error)
 	GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error)

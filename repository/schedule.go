@@ -2,6 +2,11 @@ package repository
 
 import "time"
 
+type Counter struct {
+	ID  string `bson:"_id,omitempty"`
+	Seq int    `bson:"seq"`
+}
+
 type Schedule struct {
 	Id              string    `bson:"_id,omitempty"`
 	GoogleId        string    `bson:"googleId"`
@@ -29,11 +34,6 @@ type Schedule struct {
 	RecurrenceId int    `bson:"recurrenceId"`
 }
 
-type Counter struct {
-	ID  string `bson:"_id,omitempty"`
-	Seq int    `bson:"seq"`
-}
-
 type TrafficResponse struct {
 	Tm struct {
 		ID  string `json:"@id"`
@@ -43,16 +43,16 @@ type TrafficResponse struct {
 				X float64 `json:"x"`
 				Y float64 `json:"y"`
 			} `json:"p"`
-			Ic  int     `json:"ic"`
-			Ty  int     `json:"ty"`
-			Cs  int     `json:"cs"`
-			D   string  `json:"d"`
-			C   string  `json:"c"`
-			F   string  `json:"f"`
-			T   string  `json:"t"`
-			L   int     `json:"l"`
-			Dl  int     `json:"dl"`
-			R   string  `json:"r"`
+			Ic  int    `json:"ic"`
+			Ty  int    `json:"ty"`
+			Cs  int    `json:"cs"`
+			D   string `json:"d"`
+			C   string `json:"c"`
+			F   string `json:"f"`
+			T   string `json:"t"`
+			L   int    `json:"l"`
+			Dl  int    `json:"dl"`
+			R   string `json:"r"`
 			Cbl struct {
 				X float64 `json:"x"`
 				Y float64 `json:"y"`
@@ -65,9 +65,40 @@ type TrafficResponse struct {
 	} `json:"tm"`
 }
 
+type Forecast struct {
+	Summary   Summary    `json:"summary"`
+	Waypoints []Waypoint `json:"waypoints"`
+}
+
+type Summary struct {
+	IconCode int    `json:"iconCode"`
+	Hazards  Hazard `json:"hazards"`
+}
+
+type Hazard struct {
+	MaxHazardIndex int `json:"maxHazardIndex"`
+}
+
+type Waypoint struct {
+	IconCode       int           `json:"iconCode"`
+	ShortPhrase    string        `json:"shortPhrase"`
+	IsDayTime      bool          `json:"isDayTime"`
+	CloudCover     int           `json:"cloudCover"`
+	Precipitation  Precipitation `json:"precipitation"`
+	LightningCount int           `json:"lightningCount"`
+	Hazards        Hazard        `json:"hazards"`
+	Notifications  []string      `json:"notifications"`
+}
+
+type Precipitation struct {
+	Dbz  float64 `json:"dbz"`
+	Type string  `json:"type"`
+}
+
 type ScheduleRepository interface {
 	GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, mode string, depTime string) (string, error)
 	GetTraffic(oriLat float64, oriLong float64, destLat float64, destLong float64) (TrafficResponse, error)
+	GetWeather(oriLat string, oriLong string, destLat string, destLong string, depTime string) (Forecast, error)
 	GetNextGroupId() (int, error)
 	GetNextRecurrenceId() (int, error)
 	CalculateNextRecurrenceDate(currentDate, recurrence string, count int) ([]string, error)

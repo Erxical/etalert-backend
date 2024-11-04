@@ -212,6 +212,26 @@ func min(a, b float64) (float64, float64) {
 	return b, a
 }
 
+func (s *scheduleService) GetWeather(oriLat string, oriLong string, destLat string, destLong string, travelTime string) ([]Weather, error) {
+	forecasts, err := s.scheduleRepo.GetWeather(oriLat, oriLong, destLat, destLong, travelTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var weatherDetails []Weather
+
+	for _, waypoint := range forecasts.Waypoints {
+		weather := Weather{
+			Hazard:            waypoint.Hazards.MaxHazardIndex,
+			Weather:           waypoint.ShortPhrase,
+			PrecipitationType: waypoint.Precipitation.Type,
+		}
+		weatherDetails = append(weatherDetails, weather)
+	}
+
+	return weatherDetails, nil
+}
+
 func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error) {
 	groupId, err := s.scheduleRepo.GetNextGroupId()
 	if err != nil {
