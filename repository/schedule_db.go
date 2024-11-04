@@ -74,6 +74,32 @@ func (s *scheduleRepositoryDB) GetTravelTime(oriLat string, oriLong string, dest
 	return element.Duration.Text, nil
 }
 
+func (s *scheduleRepositoryDB) GetTraffic(minLat float64, minLong float64, maxLat float64, maxLong float64) (TrafficResponse, error) {
+	godotenv.Load()
+	apiKey := os.Getenv("AZURE_MAP_API_KEY")
+	url := fmt.Sprintf("https://atlas.microsoft.com/traffic/incident/detail/json?subscription-key=%s&api-version=1.0&style=s3&boundingbox=%f,%f,%f,%f&boundingZoom=11&trafficmodelid=-1&language=en-US&projection=EPSG4326", apiKey, minLat, minLong, maxLat, maxLong)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	response, err := client.Get(url)
+	if err != nil {
+		return TrafficResponse{}, fmt.Errorf("failed to fetch traffic data: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return TrafficResponse{}, fmt.Errorf("received non-200 response status: %d", response.StatusCode)
+	}
+
+	var trafficData TrafficResponse
+	err = json.NewDecoder(response.Body).Decode(&trafficData)
+	if err != nil {
+		return TrafficResponse{}, fmt.Errorf("failed to parse response: %v", err)
+	}
+
+	return trafficData, nil
+}
+
 func (s *scheduleRepositoryDB) GetNextGroupId() (int, error) {
 	var counter Counter
 	ctx := context.Background()

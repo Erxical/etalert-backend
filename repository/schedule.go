@@ -34,8 +34,40 @@ type Counter struct {
 	Seq int    `bson:"seq"`
 }
 
+type TrafficResponse struct {
+	Tm struct {
+		ID  string `json:"@id"`
+		Poi []struct {
+			ID string `json:"id"`
+			P  struct {
+				X float64 `json:"x"`
+				Y float64 `json:"y"`
+			} `json:"p"`
+			Ic  int     `json:"ic"`
+			Ty  int     `json:"ty"`
+			Cs  int     `json:"cs"`
+			D   string  `json:"d"`
+			C   string  `json:"c"`
+			F   string  `json:"f"`
+			T   string  `json:"t"`
+			L   int     `json:"l"`
+			Dl  int     `json:"dl"`
+			R   string  `json:"r"`
+			Cbl struct {
+				X float64 `json:"x"`
+				Y float64 `json:"y"`
+			} `json:"cbl"`
+			Ctr struct {
+				X float64 `json:"x"`
+				Y float64 `json:"y"`
+			} `json:"ctr"`
+		} `json:"poi"`
+	} `json:"tm"`
+}
+
 type ScheduleRepository interface {
 	GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, mode string, depTime string) (string, error)
+	GetTraffic(oriLat float64, oriLong float64, destLat float64, destLong float64) (TrafficResponse, error)
 	GetNextGroupId() (int, error)
 	GetNextRecurrenceId() (int, error)
 	CalculateNextRecurrenceDate(currentDate, recurrence string, count int) ([]string, error)

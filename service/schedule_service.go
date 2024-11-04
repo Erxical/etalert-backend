@@ -99,14 +99,14 @@ func (s *scheduleService) autoUpdateSchedules() {
 					return
 				}
 
-				startTime, err := time.Parse("15:04", newStartTime)
-				if err != nil {
-					log.Printf("failed to parse start time: %v", err)
-				}
-
 				travelDuration, err := parseDuration(travelTimeText)
 				if err != nil {
 					log.Printf("failed to parse travel duration: %v", err)
+				}
+
+				startTime, err := time.Parse("15:04", newStartTime)
+				if err != nil {
+					log.Printf("failed to parse start time: %v", err)
 				}
 
 				newEndTime = newStartTime
@@ -165,6 +165,51 @@ func (s *scheduleService) autoUpdateSchedules() {
 			}
 		}
 	}
+}
+
+func (s *scheduleService) GetTraffic(oriLat string, oriLong string, destLat string, destLong string) ([]Traffic, error) {
+	oriLatF, err := strconv.ParseFloat(oriLat, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid origin latitude")
+	}
+	destLatF, err := strconv.ParseFloat(destLat, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid destination latitude")
+	}
+	oriLongF, err := strconv.ParseFloat(oriLong, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid origin latitude")
+	}
+	destLongF, err := strconv.ParseFloat(destLong, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid destination latitude")
+	}
+	minLat, maxLat := min(oriLatF, destLatF)
+	minLon, maxLon := min(oriLongF, destLongF)
+
+	traffic, err := s.scheduleRepo.GetTraffic(minLat, minLon, maxLat, maxLon)
+	if err != nil {
+		return nil, err
+	}
+
+	var trafficDetails []Traffic
+	for _, poi := range traffic.Tm.Poi {
+		trafficDetails = append(trafficDetails, Traffic{
+			Description: poi.D,
+			Cause:       poi.C,
+			FromRoad:    poi.F,
+			ToRoad:      poi.T,
+		})
+	}
+
+	return trafficDetails, nil
+}
+
+func min(a, b float64) (float64, float64) {
+	if a < b {
+		return a, b
+	}
+	return b, a
 }
 
 func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error) {

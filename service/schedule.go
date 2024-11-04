@@ -61,8 +61,16 @@ type ScheduleUpdateInput struct {
 	IsHaveEndTime bool   `bson:"isHaveEndTime"`
 }
 
+type Traffic struct {
+	Description string `bson:"description"`
+	Cause       string `bson:"cause"`
+	FromRoad    string `bson:"fromRoad"`
+	ToRoad      string `bson:"toRoad"`
+}
+
 type ScheduleService interface {
 	StartCronJob()
+	GetTraffic(oriLat string, oriLong string, destLat string, destLong string) ([]Traffic, error)
 	InsertSchedule(schedule *ScheduleInput) (string, error)
 	InsertRecurrenceSchedule(schedule *ScheduleInput) (string, error)
 	GetAllSchedules(gId string, date string) ([]*ScheduleResponse, error)
