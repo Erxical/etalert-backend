@@ -48,7 +48,13 @@ func (s *routineService) GetAllRoutines(gId string) ([]*RoutineResponse, error) 
 }
 
 func (s *routineService) UpdateRoutine(id string, routine *RoutineUpdateInput) error {
-	err := s.routineRepo.UpdateRoutine(id, &repository.Routine{
+	currentRoutine, err := s.routineRepo.GetRoutineById(id)
+	if err != nil {
+		return err
+	}
+	err = s.routineRepo.UpdateRoutine(id, &repository.Routine{
+		Id:       currentRoutine.Id,
+		GoogleId: currentRoutine.GoogleId,
 		Name:     routine.Name,
 		Duration: routine.Duration,
 		Order:    routine.Order,
