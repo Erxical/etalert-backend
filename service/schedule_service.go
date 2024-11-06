@@ -19,10 +19,11 @@ type scheduleService struct {
 	scheduleLogRepo repository.ScheduleLogRepository
 	routineRepo     repository.RoutineRepository
 	bedtimeRepo     repository.BedtimeRepository
+	tagRepo         repository.TagRepository
 }
 
-func NewScheduleService(scheduleRepo repository.ScheduleRepository, scheduleLogRepo repository.ScheduleLogRepository, routineRepo repository.RoutineRepository, bedTimeRepo repository.BedtimeRepository) ScheduleService {
-	return &scheduleService{scheduleRepo: scheduleRepo, scheduleLogRepo: scheduleLogRepo, routineRepo: routineRepo, bedtimeRepo: bedTimeRepo}
+func NewScheduleService(scheduleRepo repository.ScheduleRepository, scheduleLogRepo repository.ScheduleLogRepository, routineRepo repository.RoutineRepository, bedTimeRepo repository.BedtimeRepository, tagRepo repository.TagRepository) ScheduleService {
+	return &scheduleService{scheduleRepo: scheduleRepo, scheduleLogRepo: scheduleLogRepo, routineRepo: routineRepo, bedtimeRepo: bedTimeRepo, tagRepo: tagRepo}
 }
 
 func parseDuration(durationText string) (time.Duration, error) {
@@ -270,7 +271,7 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
 		IsUpdated:       false,
-		Tag:             schedule.Tag,
+		TagId:           schedule.TagId,
 		Recurrence:      schedule.Recurrence,
 		RecurrenceId:    schedule.RecurrenceId,
 	})
@@ -394,9 +395,23 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 		return "", fmt.Errorf("schedule cannot be nil")
 	}
 
-	routines, err := s.routineRepo.GetAllRoutines(schedule.GoogleId)
+	routineLists, err := s.tagRepo.GetRoutinesByTagId(schedule.TagId)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch user routines: %v", err)
+		return "", fmt.Errorf("failed to fetch user routine lists: %v", err)
+	}
+
+	var routines []*RoutineResponse
+	for _, routineId := range routineLists {
+		routine, err := s.routineRepo.GetRoutineById(routineId)
+		if err != nil {
+			return "", err
+		}
+		routines = append(routines, &RoutineResponse{
+			Id:       routine.Id,
+			Name:     routine.Name,
+			Duration: routine.Duration,
+			Order:    routine.Order,
+		})
 	}
 
 	currentStartTime, err := time.Parse("15:04", schedule.StartTime)
@@ -484,9 +499,23 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 		}
 	}
 
-	routines, err := s.routineRepo.GetAllRoutines(schedule.GoogleId)
+	routineLists, err := s.tagRepo.GetRoutinesByTagId(schedule.TagId)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch user routines: %v", err)
+		return "", fmt.Errorf("failed to fetch user routine lists: %v", err)
+	}
+
+	var routines []*RoutineResponse
+	for _, routineId := range routineLists {
+		routine, err := s.routineRepo.GetRoutineById(routineId)
+		if err != nil {
+			return "", err
+		}
+		routines = append(routines, &RoutineResponse{
+			Id:       routine.Id,
+			Name:     routine.Name,
+			Duration: routine.Duration,
+			Order:    routine.Order,
+		})
 	}
 
 	const batchSize = 100
@@ -525,7 +554,7 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 			IsFirstSchedule: schedule.IsFirstSchedule,
 			IsTraveling:     schedule.IsTraveling,
 			IsUpdated:       false,
-			Tag:             schedule.Tag,
+			TagId:           schedule.TagId,
 			Recurrence:      schedule.Recurrence,
 			RecurrenceId:    schedule.RecurrenceId,
 		}
@@ -735,7 +764,7 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 			IsFirstSchedule: schedule.IsFirstSchedule,
 			IsTraveling:     schedule.IsTraveling,
 			IsUpdated:       schedule.IsUpdated,
-			Tag:             schedule.Tag,
+			TagId:           schedule.TagId,
 			Recurrence:      schedule.Recurrence,
 			RecurrenceId:    schedule.RecurrenceId,
 		})
@@ -770,7 +799,7 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
-		Tag:             schedule.Tag,
+		TagId:           schedule.TagId,
 		Recurrence:      schedule.Recurrence,
 		RecurrenceId:    schedule.RecurrenceId,
 	}, nil
@@ -848,7 +877,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 		IsFirstSchedule: currentSchedule.IsFirstSchedule,
 		IsTraveling:     currentSchedule.IsTraveling,
 		IsUpdated:       false,
-		Tag:             currentSchedule.Tag,
+		TagId:           currentSchedule.TagId,
 		Recurrence:      currentSchedule.Recurrence,
 		RecurrenceId:    currentSchedule.RecurrenceId,
 	}
@@ -954,7 +983,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 				IsFirstSchedule: sch.IsFirstSchedule,
 				IsTraveling:     sch.IsTraveling,
 				IsUpdated:       false,
-				Tag:             sch.Tag,
+				TagId:           sch.TagId,
 				Recurrence:      sch.Recurrence,
 				RecurrenceId:    sch.RecurrenceId,
 			})
@@ -1039,7 +1068,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 			IsFirstSchedule: currentSchedule.IsFirstSchedule,
 			IsTraveling:     currentSchedule.IsTraveling,
 			IsUpdated:       false,
-			Tag:             currentSchedule.Tag,
+			TagId:           currentSchedule.TagId,
 			Recurrence:      currentSchedule.Recurrence,
 			RecurrenceId:    newRecurrenceId,
 		}
@@ -1135,7 +1164,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 					IsFirstSchedule: sch.IsFirstSchedule,
 					IsTraveling:     sch.IsTraveling,
 					IsUpdated:       false,
-					Tag:             sch.Tag,
+					TagId:           sch.TagId,
 					Recurrence:      sch.Recurrence,
 					RecurrenceId:    newRecurrenceId,
 				})

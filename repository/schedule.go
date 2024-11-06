@@ -29,7 +29,7 @@ type Schedule struct {
 	IsFirstSchedule bool      `bson:"isFirstSchedule"`
 	IsTraveling     bool      `bson:"isTraveling"`
 	IsUpdated       bool      `bson:"isUpdated"`
-	Tag             string    `bson:"tag"`
+	TagId           string    `bson:"tag"`
 	
 	Recurrence      string    `bson:"recurrence"`
 	RecurrenceId    int       `bson:"recurrenceId"`

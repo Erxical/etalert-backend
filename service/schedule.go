@@ -22,8 +22,8 @@ type ScheduleInput struct {
 	IsTraveling     bool    `bson:"isTraveling"`
 	IsUpdated       bool    `bson:"isUpdated"`
 	DepartTime      string  `bson:"departTime"`
-	Tag             string  `bson:"tag"`
-	
+	TagId           string  `bson:"tagId"`
+
 	Recurrence      string  `bson:"recurrence"`
 	RecurrenceId    int     `bson:"recurrenceId"`
 }
@@ -49,8 +49,8 @@ type ScheduleResponse struct {
 	IsFirstSchedule bool    `bson:"isFirstSchedule"`
 	IsTraveling     bool    `bson:"isTraveling"`
 	IsUpdated       bool    `bson:"isUpdated"`
-	Tag             string  `bson:"tag"`
-
+	TagId           string  `bson:"tagId"`
+	
 	Recurrence      string  `bson:"recurrence"`
 	RecurrenceId    int     `bson:"recurrenceId"`
 }

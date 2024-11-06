@@ -69,7 +69,7 @@ func main() {
 	scheduleLogRepository := repository.NewScheduleLogRepositoryDB(client, "etalert", "scheduleLog")
 
 	scheduleRepository := repository.NewScheduleRepositoryDB(client, "etalert", "schedule")
-	scheduleService := service.NewScheduleService(scheduleRepository, scheduleLogRepository, routineRepository, bedtimeRepository)
+	scheduleService := service.NewScheduleService(scheduleRepository, scheduleLogRepository, routineRepository, bedtimeRepository, tagRepository)
 	scheduleHandler := handler.NewScheduleHandler(scheduleService)
 
 	feedbackRepository := repository.NewFeedbackRepositoryDB(client, "etalert", "feedback")
