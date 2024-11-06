@@ -19,6 +19,12 @@ type createRoutineRequest struct {
 	Order    int      `json:"order" validate:"required"`
 }
 
+type updateRoutineRequest struct {
+	Name     string   `json:"name" validate:"required"`
+	Duration int      `json:"duration" validate:"required"`
+	Order    int      `json:"order" validate:"required"`
+}
+
 type createRoutineResponse struct {
 	Message string `json:"message"`
 }
@@ -67,7 +73,7 @@ func (h *RoutineHandler) GetAllRoutines(c *fiber.Ctx) error {
 
 func (h *RoutineHandler) UpdateRoutine(c *fiber.Ctx) error {
 	id := c.Params("id")
-	var req createRoutineRequest
+	var req updateRoutineRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
 	}
