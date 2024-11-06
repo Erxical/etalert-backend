@@ -74,6 +74,19 @@ func (t *tagRepositoryDB) GetRoutinesByTagId(id string) ([]string, error) {
 	return tag.Routines, nil
 }
 
+func (t *tagRepositoryDB) GetTagByRoutineId(id string) (string, error) {
+	ctx := context.Background()
+
+	filter := bson.M{"routines": id}
+
+	var tag Tag
+	err := t.collection.FindOne(ctx, filter).Decode(&tag)
+	if err != nil {
+		return "", err
+	}
+	return tag.Name, nil
+}
+
 func (t *tagRepositoryDB) UpdateTag(id string, tag *Tag) error {
 	ctx := context.Background()
 

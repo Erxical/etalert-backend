@@ -6,6 +6,7 @@ type WeeklyReport struct {
 	Name      string                `bson:"name"`
 	StartDate string                `bson:"startDate"`
 	EndDate   string                `bson:"endDate"`
+	Tag       string                `bson:"tag"`
 	Details   []*WeeklyReportDetail `bson:"details"`
 }
 

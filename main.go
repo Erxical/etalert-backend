@@ -63,7 +63,7 @@ func main() {
 	weeklyReportListHandler := handler.NewWeeklyReportListHandler(weeklyReportListService)
 
 	weeklyReportRepository := repository.NewWeeklyReportRepositoryDB(client, "etalert", "weeklyReport")
-	weeklyReportService := service.NewWeeklyReportService(weeklyReportRepository, userRepository, routineRepository, weeklyReportListRepository, routineLogRepository)
+	weeklyReportService := service.NewWeeklyReportService(weeklyReportRepository, userRepository, routineRepository, weeklyReportListRepository, routineLogRepository, tagRepository)
 	weeklyReportHandler := handler.NewWeeklyReportHandler(weeklyReportService)
 
 	scheduleLogRepository := repository.NewScheduleLogRepositoryDB(client, "etalert", "scheduleLog")

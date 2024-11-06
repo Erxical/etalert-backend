@@ -14,10 +14,11 @@ type weeklyReportService struct {
 	routineRepo          repository.RoutineRepository
 	weeklyReportListRepo repository.WeeklyReportListRepository
 	routineLogRepo       repository.RoutineLogRepository
+	tagRepo              repository.TagRepository
 }
 
-func NewWeeklyReportService(weeklyReportRepo repository.WeeklyReportRepository, userRepo repository.UserRepository, routineRepo repository.RoutineRepository, weeklyReportListRepo repository.WeeklyReportListRepository, routineLogRepo repository.RoutineLogRepository) WeeklyReportService {
-	return &weeklyReportService{weeklyReportRepo: weeklyReportRepo, userRepo: userRepo, routineRepo: routineRepo, weeklyReportListRepo: weeklyReportListRepo, routineLogRepo: routineLogRepo}
+func NewWeeklyReportService(weeklyReportRepo repository.WeeklyReportRepository, userRepo repository.UserRepository, routineRepo repository.RoutineRepository, weeklyReportListRepo repository.WeeklyReportListRepository, routineLogRepo repository.RoutineLogRepository, tagRepo repository.TagRepository) WeeklyReportService {
+	return &weeklyReportService{weeklyReportRepo: weeklyReportRepo, userRepo: userRepo, routineRepo: routineRepo, weeklyReportListRepo: weeklyReportListRepo, routineLogRepo: routineLogRepo, tagRepo: tagRepo}
 }
 
 func (w *weeklyReportService) StartCronJob() {
@@ -28,60 +29,65 @@ func (w *weeklyReportService) StartCronJob() {
 
 func (w *weeklyReportService) generateWeeklyReport() {
 	now := time.Now().UTC().Add(7 * time.Hour)
-	if now.Weekday() == time.Monday  && now.Hour() == 0 && now.Minute() == 0 {
-	users, err := w.userRepo.GetAllUsersId()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	for _, user := range users {
-		routines, err := w.routineRepo.GetAllRoutines(user)
+	if now.Weekday() == time.Monday && now.Hour() == 0 && now.Minute() == 0 {
+		users, err := w.userRepo.GetAllUsersId()
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
-		aWeekAgo := now.AddDate(0, 0, -7)
-		routineReports, err := w.routineLogRepo.GetRoutineLogs(user, aWeekAgo.Format("02-01-2006"))
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+		for _, user := range users {
+			routines, err := w.routineRepo.GetAllRoutines(user)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 
-		if len((routines)) != 0 && len(routineReports) != 0 {
-			w.weeklyReportListRepo.InsertWeeklyReportList(&repository.WeeklyReportList{
-				GoogleId:  user,
-				StartDate: aWeekAgo.Format("02-01-2006"),
-				EndDate:   now.AddDate(0, 0, -1).Format("02-01-2006"),
-			})
+			aWeekAgo := now.AddDate(0, 0, -7)
+			routineReports, err := w.routineLogRepo.GetRoutineLogs(user, aWeekAgo.Format("02-01-2006"))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 
-			var weeklyReportDetails []*repository.WeeklyReportDetail
-			for _, routine := range routines {
-				for _, routineReport := range routineReports {
-					if routine.Id == routineReport.RoutineId {
-						weeklyReportDetail := &repository.WeeklyReportDetail{
-							Date:          routineReport.Date,
-							StartTime:     routineReport.StartTime,
-							EndTime:       routineReport.EndTime,
-							ActualEndTime: routineReport.ActualEndTime,
-							Skewness:      routineReport.Skewness,
-						}
-						weeklyReportDetails = append(weeklyReportDetails, weeklyReportDetail)
-					}
-				}
-
-				weeklyReport := &repository.WeeklyReport{
+			if len((routines)) != 0 && len(routineReports) != 0 {
+				w.weeklyReportListRepo.InsertWeeklyReportList(&repository.WeeklyReportList{
 					GoogleId:  user,
-					Name:      routine.Name,
 					StartDate: aWeekAgo.Format("02-01-2006"),
 					EndDate:   now.AddDate(0, 0, -1).Format("02-01-2006"),
-					Details:   weeklyReportDetails,
+				})
+
+				var weeklyReportDetails []*repository.WeeklyReportDetail
+				for _, routine := range routines {
+					tag, err := w.tagRepo.GetTagByRoutineId(routine.Id)
+					if err != nil {
+						fmt.Println(err)
+					}
+					for _, routineReport := range routineReports {
+						if routine.Id == routineReport.RoutineId {
+							weeklyReportDetail := &repository.WeeklyReportDetail{
+								Date:          routineReport.Date,
+								StartTime:     routineReport.StartTime,
+								EndTime:       routineReport.EndTime,
+								ActualEndTime: routineReport.ActualEndTime,
+								Skewness:      routineReport.Skewness,
+							}
+							weeklyReportDetails = append(weeklyReportDetails, weeklyReportDetail)
+						}
+					}
+
+					weeklyReport := &repository.WeeklyReport{
+						GoogleId:  user,
+						Name:      routine.Name,
+						StartDate: aWeekAgo.Format("02-01-2006"),
+						EndDate:   now.AddDate(0, 0, -1).Format("02-01-2006"),
+						Tag:       tag,
+						Details:   weeklyReportDetails,
+					}
+					w.weeklyReportRepo.InsertWeeklyReport(weeklyReport)
 				}
-				w.weeklyReportRepo.InsertWeeklyReport(weeklyReport)
 			}
-		}
-		fmt.Printf("Weekly report generated for %s \n", user)
+			fmt.Printf("Weekly report generated for %s \n", user)
 		}
 	}
 }
@@ -100,6 +106,7 @@ func (w *weeklyReportService) GetWeeklyReports(googleId string, date string) ([]
 			Name:      weeklyReport.Name,
 			StartDate: weeklyReport.StartDate,
 			EndDate:   weeklyReport.EndDate,
+			Tag:       weeklyReport.Tag,
 			Details:   weeklyReport.Details,
 		})
 	}
