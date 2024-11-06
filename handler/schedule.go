@@ -30,9 +30,9 @@ type createScheduleRequest struct {
 	Priority        int     `json:"priority"`
 	IsHaveLocation  bool    `json:"isHaveLocation"`
 	IsFirstSchedule bool    `json:"isFirstSchedule"`
-
-	Recurrence   string `json:"recurrence"`
-	RecurrenceId int    `json:"recurrenceId"`
+	Tag             string  `json:"tag"`
+	Recurrence      string  `json:"recurrence"`
+	RecurrenceId    int     `json:"recurrenceId"`
 }
 
 type updateScheduleRequest struct {
@@ -78,8 +78,8 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 		Priority:        req.Priority,
 		IsHaveLocation:  req.IsHaveLocation,
 		IsFirstSchedule: req.IsFirstSchedule,
-
-		Recurrence: req.Recurrence,
+		Tag:             req.Tag,
+		Recurrence:      req.Recurrence,
 	}
 
 	if schedule.Recurrence != "none" {

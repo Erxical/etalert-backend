@@ -392,6 +392,7 @@ func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) err
 		"isFirstSchedule": schedule.IsFirstSchedule,
 		"isTraveling":     schedule.IsTraveling,
 		"isUpdated":       false,
+		"tag":             schedule.Tag,
 		"recurrence":      schedule.Recurrence,
 		"recurrenceId":    schedule.RecurrenceId,
 	},

@@ -29,9 +29,10 @@ type Schedule struct {
 	IsFirstSchedule bool      `bson:"isFirstSchedule"`
 	IsTraveling     bool      `bson:"isTraveling"`
 	IsUpdated       bool      `bson:"isUpdated"`
-
-	Recurrence   string `bson:"recurrence"`
-	RecurrenceId int    `bson:"recurrenceId"`
+	Tag             string    `bson:"tag"`
+	
+	Recurrence      string    `bson:"recurrence"`
+	RecurrenceId    int       `bson:"recurrenceId"`
 }
 
 type TrafficResponse struct {

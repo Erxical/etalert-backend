@@ -270,9 +270,9 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
 		IsUpdated:       false,
-
-		Recurrence:   schedule.Recurrence,
-		RecurrenceId: schedule.RecurrenceId,
+		Tag:             schedule.Tag,
+		Recurrence:      schedule.Recurrence,
+		RecurrenceId:    schedule.RecurrenceId,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to insert schedule: %v", err)
@@ -525,6 +525,7 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 			IsFirstSchedule: schedule.IsFirstSchedule,
 			IsTraveling:     schedule.IsTraveling,
 			IsUpdated:       false,
+			Tag:             schedule.Tag,
 			Recurrence:      schedule.Recurrence,
 			RecurrenceId:    schedule.RecurrenceId,
 		}
@@ -734,9 +735,9 @@ func (s *scheduleService) GetAllSchedules(gId string, date string) ([]*ScheduleR
 			IsFirstSchedule: schedule.IsFirstSchedule,
 			IsTraveling:     schedule.IsTraveling,
 			IsUpdated:       schedule.IsUpdated,
-
-			Recurrence:   schedule.Recurrence,
-			RecurrenceId: schedule.RecurrenceId,
+			Tag:             schedule.Tag,
+			Recurrence:      schedule.Recurrence,
+			RecurrenceId:    schedule.RecurrenceId,
 		})
 	}
 
@@ -769,9 +770,9 @@ func (s *scheduleService) GetScheduleById(id string) (*ScheduleResponse, error) 
 		IsHaveLocation:  schedule.IsHaveLocation,
 		IsFirstSchedule: schedule.IsFirstSchedule,
 		IsTraveling:     schedule.IsTraveling,
-
-		Recurrence:   schedule.Recurrence,
-		RecurrenceId: schedule.RecurrenceId,
+		Tag:             schedule.Tag,
+		Recurrence:      schedule.Recurrence,
+		RecurrenceId:    schedule.RecurrenceId,
 	}, nil
 }
 
@@ -847,6 +848,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 		IsFirstSchedule: currentSchedule.IsFirstSchedule,
 		IsTraveling:     currentSchedule.IsTraveling,
 		IsUpdated:       false,
+		Tag:             currentSchedule.Tag,
 		Recurrence:      currentSchedule.Recurrence,
 		RecurrenceId:    currentSchedule.RecurrenceId,
 	}
@@ -952,6 +954,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 				IsFirstSchedule: sch.IsFirstSchedule,
 				IsTraveling:     sch.IsTraveling,
 				IsUpdated:       false,
+				Tag:             sch.Tag,
 				Recurrence:      sch.Recurrence,
 				RecurrenceId:    sch.RecurrenceId,
 			})
@@ -1036,6 +1039,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 			IsFirstSchedule: currentSchedule.IsFirstSchedule,
 			IsTraveling:     currentSchedule.IsTraveling,
 			IsUpdated:       false,
+			Tag:             currentSchedule.Tag,
 			Recurrence:      currentSchedule.Recurrence,
 			RecurrenceId:    newRecurrenceId,
 		}
@@ -1131,6 +1135,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 					IsFirstSchedule: sch.IsFirstSchedule,
 					IsTraveling:     sch.IsTraveling,
 					IsUpdated:       false,
+					Tag:             sch.Tag,
 					Recurrence:      sch.Recurrence,
 					RecurrenceId:    newRecurrenceId,
 				})
