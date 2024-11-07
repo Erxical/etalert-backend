@@ -1,24 +1,23 @@
 package websocket
 
 import (
-    "log"
-    "github.com/gofiber/websocket/v2"
+	"encoding/json"
+	"log"
+
+	"github.com/gofiber/websocket/v2"
 )
 
 var clients = make(map[*websocket.Conn]string)// Connected clients
 var broadcast = make(chan []byte)            // Broadcast channel
 
-// HandleConnections handles incoming WebSocket connections
-func HandleConnections(c *websocket.Conn, userId string) {
+func HandleConnections(c *websocket.Conn) {
     defer func() {
         c.Close()
         delete(clients, c)
     }()
 
-    // Register the new client
-    clients[c] = userId
-
-    // Listen for messages (if needed)
+    // Wait for the client to send the initial message with the userId
+    var userId string
     for {
         _, message, err := c.ReadMessage()
         if err != nil {
@@ -26,11 +25,35 @@ func HandleConnections(c *websocket.Conn, userId string) {
             delete(clients, c)
             break
         }
+
+        // Assume the first message from the client is the userId
+        var initMsg map[string]string
+        if err := json.Unmarshal(message, &initMsg); err != nil {
+            log.Printf("error unmarshaling init message: %v", err)
+            continue
+        }
+
+        if id, ok := initMsg["userId"]; ok {
+            userId = id
+            clients[c] = userId
+            log.Printf("Registered userId %s with connection", userId)
+            break
+        }
+    }
+
+    // Listen for further messages (optional)
+    for {
+        _, message, err := c.ReadMessage()
+        if err != nil {
+            log.Printf("error: %v", err)
+            delete(clients, c)
+            break
+        }
+
         log.Printf("Received from %s: %s", userId, message)
     }
 }
 
-// SendUpdate broadcasts schedule updates to all clients
 func SendUpdate(updateMessage []byte, targetUserId string) {
     for client, userId := range clients {
         if userId == targetUserId { // Only send to the specific user

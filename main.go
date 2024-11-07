@@ -82,9 +82,8 @@ func main() {
 	// initialize new instance of fiber
 	server := fiber.New()
 
-	server.Get("/ws/:userId", websocket.New(func(c *websocket.Conn) {
-		userId := c.Params("userId") // Extract userId from the URL
-		etalert_websocket.HandleConnections(c, userId)
+	server.Get("/ws", websocket.New(func(c *websocket.Conn) {
+		etalert_websocket.HandleConnections(c)
 	}))
 
 	server.Post("/login", authHandler.Login)
