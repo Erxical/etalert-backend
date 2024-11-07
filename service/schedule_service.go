@@ -126,7 +126,7 @@ func (s *scheduleService) autoUpdateSchedules() {
 						"isHaveEndTime": schedule.IsHaveEndTime,
 					}
 					message, _ := json.Marshal(updateMessage)
-					websocket.SendUpdate(message)
+					websocket.SendUpdate(message, schedule.GoogleId)
 				}
 				log.Printf("Updated schedule time for %s from user %s", schedule.Name, schedule.GoogleId)
 			} else {
@@ -160,7 +160,7 @@ func (s *scheduleService) autoUpdateSchedules() {
 						"isHaveEndTime": schedule.IsHaveEndTime,
 					}
 					message, _ := json.Marshal(updateMessage)
-					websocket.SendUpdate(message)
+					websocket.SendUpdate(message, schedule.GoogleId)
 				}
 				log.Printf("Updated schedule time for %s from user %s", schedule.Name, schedule.GoogleId)
 			}
@@ -1003,7 +1003,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 				"isHaveEndTime": sch.IsHaveEndTime,
 			}
 			message, _ := json.Marshal(updateMessage)
-			websocket.SendUpdate(message)
+			websocket.SendUpdate(message, sch.GoogleId)
 		}
 	}
 
@@ -1015,7 +1015,7 @@ func (s *scheduleService) UpdateSchedule(id string, schedule *ScheduleUpdateInpu
 
 	updateMessage := updatedSchedule
 	message, _ := json.Marshal(updateMessage)
-	websocket.SendUpdate(message)
+	websocket.SendUpdate(message, currentSchedule.GoogleId)
 
 	return nil
 }
@@ -1184,7 +1184,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 					"isHaveEndTime": sch.IsHaveEndTime,
 				}
 				message, _ := json.Marshal(updateMessage)
-				websocket.SendUpdate(message)
+				websocket.SendUpdate(message, sch.GoogleId)
 			}
 		}
 
@@ -1195,7 +1195,7 @@ func (s *scheduleService) UpdateScheduleByRecurrenceId(recurrenceId string, inpu
 
 		updateMessage := updatedSchedule
 		message, _ := json.Marshal(updateMessage)
-		websocket.SendUpdate(message)
+		websocket.SendUpdate(message, currentSchedule.GoogleId)
 
 		if currentSchedule.Recurrence == "daily" {
 			inputDate = inputDate.AddDate(0, 0, 1)

@@ -82,8 +82,9 @@ func main() {
 	// initialize new instance of fiber
 	server := fiber.New()
 
-	server.Get("/ws", websocket.New(func(c *websocket.Conn) {
-		etalert_websocket.HandleConnections(c)
+	server.Get("/ws/:userId", websocket.New(func(c *websocket.Conn) {
+		userId := c.Params("userId") // Extract userId from the URL
+		etalert_websocket.HandleConnections(c, userId)
 	}))
 
 	server.Post("/login", authHandler.Login)
@@ -139,8 +140,6 @@ func main() {
 
 	//Feedback routes
 	protected.Post("/create-feedbacks", feedbackHandler.CreateFeedback)
-
-	go etalert_websocket.HandleMessages()
 
 	// listen to port 3000
 	log.Fatal(server.Listen(":3000"))
