@@ -1,17 +1,22 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"etalert-backend/repository"
 	"etalert-backend/websocket"
 	"fmt"
 	"log"
+	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/generative-ai-go/genai"
 	"github.com/robfig/cron/v3"
+	"google.golang.org/api/option"
 )
 
 type scheduleService struct {
@@ -100,7 +105,44 @@ func (s *scheduleService) autoUpdateSchedules() {
 					return
 				}
 
-				travelDuration, err := parseDuration(travelTimeText)
+				traffic, err := s.GetTraffic(fmt.Sprintf("%f", schedule.OriLatitude), fmt.Sprintf("%f", schedule.OriLongitude), fmt.Sprintf("%f", schedule.DestLatitude), fmt.Sprintf("%f", schedule.DestLongitude))
+				if err != nil {
+					log.Printf("Failed to get traffic: %v", err)
+				}
+			
+				weather, err := s.GetWeather(fmt.Sprintf("%f", schedule.OriLatitude), fmt.Sprintf("%f", schedule.OriLongitude), fmt.Sprintf("%f", schedule.DestLatitude), fmt.Sprintf("%f", schedule.DestLongitude), travelTimeText)
+				if err != nil {
+					log.Printf("Failed to get weather: %v", err)
+				}
+			
+				ctx := context.Background()
+				client, err := genai.NewClient(ctx, option.WithAPIKey(os.Getenv("GEMINI_API_KEY")))
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer client.Close()
+			
+				model := client.GenerativeModel("gemini-1.5-flash")
+				resp, err := model.GenerateContent(ctx, genai.Text(fmt.Sprintf(`
+							Based on the following travel details, calculate the adjusted travel time between the two locations:
+						  
+							- Origin coordinates: Latitude %f, Longitude %f
+							- Destination coordinates: Latitude %f, Longitude %f
+							- Estimated travel time from Google Distance Matrix API: %s
+							- Traffic data: %s
+							- Weather data at original location: %s
+							- Weather data at destination: %s
+							
+							Adjust the travel time by accounting for the effects of traffic and weather conditions on the route. Return only the adjusted travel time as a numeric value in minutes, without any additional text or explanation.
+						  `, schedule.OriLatitude, schedule.OriLongitude, schedule.DestLatitude, schedule.DestLongitude, travelTimeText, traffic, weather[0], weather[1])))
+			
+				if err != nil {
+					log.Fatal(err)
+				}
+			
+				geminiTravelTime := strings.TrimSpace(fmt.Sprintf("%v", resp.Candidates[0].Content.Parts[0])) + " mins"
+
+				travelDuration, err := parseDuration(geminiTravelTime)
 				if err != nil {
 					log.Printf("failed to parse travel duration: %v", err)
 				}
@@ -195,12 +237,14 @@ func (s *scheduleService) GetTraffic(oriLat string, oriLong string, destLat stri
 
 	var trafficDetails []Traffic
 	for _, poi := range traffic.Tm.Poi {
-		trafficDetails = append(trafficDetails, Traffic{
-			Description: poi.D,
-			Cause:       poi.C,
-			FromRoad:    poi.F,
-			ToRoad:      poi.T,
-		})
+		if poi.D != "" && poi.C != "" && poi.F != "" && poi.T != "" {
+			trafficDetails = append(trafficDetails, Traffic{
+				Description: "Current traffic status is " + poi.D + ",",
+				Cause:       "Cause by " + poi.C + ",",
+				FromRoad:    "From " + poi.F + ",",
+				ToRoad:      "To " + poi.T,
+			})
+		}
 	}
 
 	return trafficDetails, nil
@@ -222,10 +266,23 @@ func (s *scheduleService) GetWeather(oriLat string, oriLong string, destLat stri
 	var weatherDetails []Weather
 
 	for _, waypoint := range forecasts.Waypoints {
+		var hazardString string
+		switch waypoint.Hazards.MaxHazardIndex {
+		case 0:
+			hazardString = "No hazard"
+		case 1:
+			hazardString = "Be informed, be aware"
+		case 2:
+			hazardString = "Pay attention, be prepared"
+		case 3:
+			hazardString = "Take action"
+		case 4:
+			hazardString = "Life threatening, emergency"
+		}
 		weather := Weather{
-			Hazard:            waypoint.Hazards.MaxHazardIndex,
-			Weather:           waypoint.ShortPhrase,
-			PrecipitationType: waypoint.Precipitation.Type,
+			Hazard:            "Possible hazard is " + hazardString + ",",
+			Weather:           "and current weather is " + waypoint.ShortPhrase + ",",
+			PrecipitationType: "while the precipitation is " + waypoint.Precipitation.Type,
 		}
 		weatherDetails = append(weatherDetails, weather)
 	}

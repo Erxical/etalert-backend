@@ -24,8 +24,8 @@ type ScheduleInput struct {
 	DepartTime      string  `bson:"departTime"`
 	TagId           string  `bson:"tagId"`
 
-	Recurrence      string  `bson:"recurrence"`
-	RecurrenceId    int     `bson:"recurrenceId"`
+	Recurrence   string `bson:"recurrence"`
+	RecurrenceId int    `bson:"recurrenceId"`
 }
 
 type ScheduleResponse struct {
@@ -50,9 +50,9 @@ type ScheduleResponse struct {
 	IsTraveling     bool    `bson:"isTraveling"`
 	IsUpdated       bool    `bson:"isUpdated"`
 	TagId           string  `bson:"tagId"`
-	
-	Recurrence      string  `bson:"recurrence"`
-	RecurrenceId    int     `bson:"recurrenceId"`
+
+	Recurrence   string `bson:"recurrence"`
+	RecurrenceId int    `bson:"recurrenceId"`
 }
 
 type ScheduleUpdateInput struct {
@@ -71,7 +71,7 @@ type Traffic struct {
 }
 
 type Weather struct {
-	Hazard            int    `bson:"hazard"`
+	Hazard            string `bson:"hazard"`
 	Weather           string `bson:"weather"`
 	PrecipitationType string `bson:"precipitationType"`
 }
