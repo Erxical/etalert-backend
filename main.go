@@ -51,10 +51,11 @@ func main() {
 	routineLogHandler := handler.NewRoutineLogHandler(routineLogService)
 
 	routineRepository := repository.NewRoutineRepositoryDB(client, "etalert", "routine")
-	routineService := service.NewRoutineService(routineRepository)
+	tagRepository := repository.NewTagRepositoryDB(client, "etalert", "tag")
+	
+	routineService := service.NewRoutineService(routineRepository, tagRepository)
 	routineHandler := handler.NewRoutineHandler(routineService)
 
-	tagRepository := repository.NewTagRepositoryDB(client, "etalert", "tag")
 	tagService := service.NewTagService(tagRepository, routineRepository)
 	tagHandler := handler.NewTagHandler(tagService)
 

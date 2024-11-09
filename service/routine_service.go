@@ -6,10 +6,11 @@ import (
 
 type routineService struct {
 	routineRepo repository.RoutineRepository
+	tagRepo     repository.TagRepository
 }
 
-func NewRoutineService(routineRepo repository.RoutineRepository) RoutineService {
-	return &routineService{routineRepo: routineRepo}
+func NewRoutineService(routineRepo repository.RoutineRepository, tagRepo repository.TagRepository) RoutineService {
+	return &routineService{routineRepo: routineRepo, tagRepo: tagRepo}
 }
 
 func (s routineService) InsertRoutine(routine *RoutineInput) error {
@@ -70,5 +71,27 @@ func (s *routineService) DeleteRoutine(id string) error {
 	if err != nil {
 		return err
 	}
+
+	tag, err := s.tagRepo.GetTagByRoutineId(id)
+	if err != nil {
+		return err
+	}
+
+	var updatedRoutines []string
+	for _, routineID := range tag.Routines {
+		if routineID != id {
+			updatedRoutines = append(updatedRoutines, routineID)
+		}
+	}
+
+	if len(updatedRoutines) == 0 {
+		updatedRoutines = []string{}
+	}
+
+	err = s.tagRepo.UpdateTag(tag.Id, &repository.Tag{
+		Name:     tag.Name,
+		Routines: updatedRoutines,
+	})
+
 	return nil
 }

@@ -81,7 +81,7 @@ func (w *weeklyReportService) generateWeeklyReport() {
 						Name:      routine.Name,
 						StartDate: aWeekAgo.Format("02-01-2006"),
 						EndDate:   now.AddDate(0, 0, -1).Format("02-01-2006"),
-						Tag:       tag,
+						Tag:       tag.Name,
 						Details:   weeklyReportDetails,
 					}
 					w.weeklyReportRepo.InsertWeeklyReport(weeklyReport)
