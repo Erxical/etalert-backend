@@ -24,11 +24,16 @@ func (s *scheduleLogRepositoryDB) GetUpcomingSchedules() ([]int, error) {
 	var groupIds []int
 
 	now := time.Now().UTC().Add(7 * time.Hour)
-	currentTime := now
-	minuteLater := now.Add(1 * time.Minute)
+	currentTime := now.Format("15:04")
+	minuteLater := now.Add(1 * time.Minute).Format("15:04")
 	today := now.Format("02-01-2006")
+	parsedDate, err := time.Parse("02-01-2006", today)
+		if err != nil {
+			return nil, fmt.Errorf("invalid date format: %v", err)
+		}
+
 	filter := bson.M{
-		"date": today,
+		"date": parsedDate,
 		"checkTime": bson.M{
 			"$gte": currentTime,
 			"$lt":  minuteLater,

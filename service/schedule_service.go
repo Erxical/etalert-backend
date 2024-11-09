@@ -109,19 +109,19 @@ func (s *scheduleService) autoUpdateSchedules() {
 				if err != nil {
 					log.Printf("Failed to get traffic: %v", err)
 				}
-			
+
 				weather, err := s.GetWeather(fmt.Sprintf("%f", schedule.OriLatitude), fmt.Sprintf("%f", schedule.OriLongitude), fmt.Sprintf("%f", schedule.DestLatitude), fmt.Sprintf("%f", schedule.DestLongitude), travelTimeText)
 				if err != nil {
 					log.Printf("Failed to get weather: %v", err)
 				}
-			
+
 				ctx := context.Background()
 				client, err := genai.NewClient(ctx, option.WithAPIKey(os.Getenv("GEMINI_API_KEY")))
 				if err != nil {
 					log.Fatal(err)
 				}
 				defer client.Close()
-			
+
 				model := client.GenerativeModel("gemini-1.5-flash")
 				resp, err := model.GenerateContent(ctx, genai.Text(fmt.Sprintf(`
 							Based on the following travel details, calculate the adjusted travel time between the two locations:
@@ -135,11 +135,11 @@ func (s *scheduleService) autoUpdateSchedules() {
 							
 							Adjust the travel time by accounting for the effects of traffic and weather conditions on the route. Return only the adjusted travel time as a numeric value in minutes, without any additional text or explanation.
 						  `, schedule.OriLatitude, schedule.OriLongitude, schedule.DestLatitude, schedule.DestLongitude, travelTimeText, traffic, weather[0], weather[1])))
-			
+
 				if err != nil {
 					log.Fatal(err)
 				}
-			
+
 				geminiTravelTime := strings.TrimSpace(fmt.Sprintf("%v", resp.Candidates[0].Content.Parts[0])) + " mins"
 
 				travelDuration, err := parseDuration(geminiTravelTime)
@@ -336,26 +336,49 @@ func (s *scheduleService) InsertSchedule(schedule *ScheduleInput) (string, error
 		return "", fmt.Errorf("failed to insert schedule: %v", err)
 	}
 
+	var travelDuration time.Duration
+
 	if schedule.IsHaveLocation {
-		err := s.handleTravelSchedule(schedule)
+		travelDuration, err = s.handleTravelSchedule(schedule)
 		if err != nil {
 			log.Printf("Failed to handle travel schedule: %v", err)
 		}
 	}
 
 	if schedule.IsFirstSchedule {
-		str, err := s.insertRoutineSchedules(schedule)
+		_, err := s.insertRoutineSchedules(schedule)
 		if err != nil {
 			log.Printf("Failed to insert routines: %v", err)
-		} else {
-			return str, nil
+		}
+	}
+
+	if schedule.IsHaveLocation {
+		checkTime, err := time.Parse("15:04", schedule.StartTime)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse check time: %v", err)
+		}
+
+		scheduleLog := &repository.ScheduleLog{
+			GroupId:       schedule.GroupId,
+			RecurrenceId:  schedule.RecurrenceId,
+			OriLatitude:   schedule.OriLatitude,
+			OriLongitude:  schedule.OriLongitude,
+			DestLatitude:  schedule.DestLatitude,
+			DestLongitude: schedule.DestLongitude,
+			Date:          parsedDate,
+			CheckTime:     checkTime.Add(-travelDuration).Format("15:04"),
+		}
+
+		err = s.scheduleLogRepo.InsertScheduleLog(scheduleLog)
+		if err != nil {
+			return "", fmt.Errorf("failed to insert schedule log: %v", err)
 		}
 	}
 
 	return "", nil
 }
 
-func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
+func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) (time.Duration, error) {
 	departureTime := schedule.DepartTime
 	if departureTime == "" {
 		departureTime = "now"
@@ -374,17 +397,17 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 	)
 	if err != nil {
 		log.Printf("Failed to get travel time: %v", err)
-		return fmt.Errorf("failed to get travel time: %v", err)
+		return 0, fmt.Errorf("failed to get travel time: %v", err)
 	}
 
 	startTime, err := time.Parse("15:04", schedule.StartTime)
 	if err != nil {
-		return fmt.Errorf("failed to parse start time: %v", err)
+		return 0, fmt.Errorf("failed to parse start time: %v", err)
 	}
 
 	travelDuration, err := parseDuration(travelTimeText)
 	if err != nil {
-		return fmt.Errorf("failed to parse travel duration: %v", err)
+		return 0, fmt.Errorf("failed to parse travel duration: %v", err)
 	}
 	leaveTime := startTime.Add(-travelDuration)
 	arriveTime := startTime
@@ -399,7 +422,7 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 
 	parsedDate, err := time.Parse("02-01-2006", schedule.Date)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	leaveSchedule := &repository.Schedule{
@@ -425,26 +448,11 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) error {
 
 	err = s.scheduleRepo.InsertSchedule(leaveSchedule)
 	if err != nil {
-		return fmt.Errorf("failed to insert leave home schedule: %v", err)
+		return 0, fmt.Errorf("failed to insert leave home schedule: %v", err)
 	}
 
-	scheduleLog := &repository.ScheduleLog{
-		GroupId:       schedule.GroupId,
-		RecurrenceId:  schedule.RecurrenceId,
-		OriLatitude:   schedule.OriLatitude,
-		OriLongitude:  schedule.OriLongitude,
-		DestLatitude:  schedule.DestLatitude,
-		DestLongitude: schedule.DestLongitude,
-		Date:          parsedDate,
-		CheckTime:     leaveTime.Add(-travelDuration).Format("15:04"),
-	}
-
-	err = s.scheduleLogRepo.InsertScheduleLog(scheduleLog)
-	if err != nil {
-		return fmt.Errorf("failed to insert schedule log: %v", err)
-	}
-
-	return nil
+	fmt.Println(travelDuration)
+	return travelDuration, nil
 }
 
 func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (string, error) {
@@ -520,6 +528,7 @@ func (s *scheduleService) insertRoutineSchedules(schedule *ScheduleInput) (strin
 			log.Printf("Failed to insert routine schedule: %v", err) // Log and continue
 			return "", fmt.Errorf("failed to insert routine schedule: %v", err)
 		}
+		schedule.StartTime = currentStartTime.Format("15:04")
 	}
 
 	return "", nil
@@ -661,18 +670,6 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 				RecurrenceId:    schedule.RecurrenceId,
 			}
 			dateSchedules = append([]repository.Schedule{travelSchedule}, dateSchedules...)
-
-			scheduleLog := repository.ScheduleLog{
-				GroupId:       schedule.GroupId,
-				RecurrenceId:  schedule.RecurrenceId,
-				OriLatitude:   schedule.OriLatitude,
-				OriLongitude:  schedule.OriLongitude,
-				DestLatitude:  schedule.DestLatitude,
-				DestLongitude: schedule.DestLongitude,
-				Date:          parsedDate,
-				CheckTime:     currentTime.Format("15:04"),
-			}
-			scheduleLogs = append(scheduleLogs, scheduleLog)
 		}
 
 		if schedule.IsFirstSchedule {
@@ -715,6 +712,20 @@ func (s *scheduleService) InsertRecurrenceSchedule(schedule *ScheduleInput) (str
 				}
 				dateSchedules = append([]repository.Schedule{routineSchedule}, dateSchedules...)
 			}
+		}
+
+		if schedule.IsHaveLocation {
+			scheduleLog := repository.ScheduleLog{
+				GroupId:       schedule.GroupId,
+				RecurrenceId:  schedule.RecurrenceId,
+				OriLatitude:   schedule.OriLatitude,
+				OriLongitude:  schedule.OriLongitude,
+				DestLatitude:  schedule.DestLatitude,
+				DestLongitude: schedule.DestLongitude,
+				Date:          parsedDate,
+				CheckTime:     currentTime.Add(-travelDuration).Format("15:04"),
+			}
+			scheduleLogs = append(scheduleLogs, scheduleLog)
 		}
 
 		allSchedules = append(allSchedules, dateSchedules...)
