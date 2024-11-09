@@ -89,15 +89,15 @@ func (s *scheduleService) autoUpdateSchedules() {
 				break
 			}
 			if schedule.IsTraveling {
-				if schedule.Transportation != "walking" && schedule.Transportation != "driving" && schedule.Transportation != "transit" {
-					schedule.Transportation = "driving"
+				if schedules[0].Transportation != "walking" && schedules[0].Transportation != "driving" && schedules[0].Transportation != "transit" {
+					schedules[0].Transportation = "driving"
 				}
 				travelTimeText, err := s.scheduleRepo.GetTravelTime(
 					fmt.Sprintf("%f", schedule.OriLatitude),
 					fmt.Sprintf("%f", schedule.OriLongitude),
 					fmt.Sprintf("%f", schedule.DestLatitude),
 					fmt.Sprintf("%f", schedule.DestLongitude),
-					schedule.Transportation,
+					schedules[0].Transportation,
 					"now",
 				)
 				if err != nil {
@@ -129,12 +129,13 @@ func (s *scheduleService) autoUpdateSchedules() {
 							- Origin coordinates: Latitude %f, Longitude %f
 							- Destination coordinates: Latitude %f, Longitude %f
 							- Estimated travel time from Google Distance Matrix API: %s
+							- Transportation method: %s
 							- Traffic data: %s
 							- Weather data at original location: %s
 							- Weather data at destination: %s
 							
 							Adjust the travel time by accounting for the effects of traffic and weather conditions on the route. Return only the adjusted travel time as a numeric value in minutes, without any additional text or explanation.
-						  `, schedule.OriLatitude, schedule.OriLongitude, schedule.DestLatitude, schedule.DestLongitude, travelTimeText, traffic, weather[0], weather[1])))
+						  `, schedule.OriLatitude, schedule.OriLongitude, schedule.DestLatitude, schedule.DestLongitude, travelTimeText, schedules[0].Transportation, traffic, weather[0], weather[1])))
 
 				if err != nil {
 					log.Fatal(err)
