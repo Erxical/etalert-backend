@@ -451,8 +451,7 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) (time.Du
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert leave home schedule: %v", err)
 	}
-
-	fmt.Println(travelDuration)
+	
 	return travelDuration, nil
 }
 
