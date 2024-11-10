@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/websocket/v2"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -82,6 +83,7 @@ func main() {
 
 	// initialize new instance of fiber
 	server := fiber.New()
+	server.Use(recover.New())
 
 	server.Get("/ws", websocket.New(func(c *websocket.Conn) {
 		etalert_websocket.HandleConnections(c)
