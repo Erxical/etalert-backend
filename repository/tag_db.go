@@ -59,6 +59,10 @@ func (t *tagRepositoryDB) GetAllTags(gId string) ([]*Tag, error) {
 func (t *tagRepositoryDB) GetRoutinesByTagId(id string) ([]string, error) {
 	ctx := context.Background()
 
+	if id == "" {
+		return []string{}, fmt.Errorf("id is required")
+	}
+
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert ID: %v", err)
