@@ -60,7 +60,7 @@ func (t *tagRepositoryDB) GetRoutinesByTagId(id string) ([]string, error) {
 	ctx := context.Background()
 
 	if id == "" {
-		return []string{}, fmt.Errorf("id is required")
+		return []string{}, nil
 	}
 
 	objectId, err := primitive.ObjectIDFromHex(id)
