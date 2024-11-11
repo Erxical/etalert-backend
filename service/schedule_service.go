@@ -105,25 +105,28 @@ func (s *scheduleService) autoUpdateSchedules() {
 					return
 				}
 
-				traffic, err := s.GetTraffic(fmt.Sprintf("%f", schedule.OriLatitude), fmt.Sprintf("%f", schedule.OriLongitude), fmt.Sprintf("%f", schedule.DestLatitude), fmt.Sprintf("%f", schedule.DestLongitude))
-				if err != nil {
-					log.Printf("Failed to get traffic: %v", err)
-				}
+				var travelDuration time.Duration
 
-				weather, err := s.GetWeather(fmt.Sprintf("%f", schedule.OriLatitude), fmt.Sprintf("%f", schedule.OriLongitude), fmt.Sprintf("%f", schedule.DestLatitude), fmt.Sprintf("%f", schedule.DestLongitude), travelTimeText)
-				if err != nil {
-					log.Printf("Failed to get weather: %v", err)
-				}
+				if schedules[0].Transportation == "driving" {
+					traffic, err := s.GetTraffic(fmt.Sprintf("%f", schedule.OriLatitude), fmt.Sprintf("%f", schedule.OriLongitude), fmt.Sprintf("%f", schedule.DestLatitude), fmt.Sprintf("%f", schedule.DestLongitude))
+					if err != nil {
+						log.Printf("Failed to get traffic: %v", err)
+					}
 
-				ctx := context.Background()
-				client, err := genai.NewClient(ctx, option.WithAPIKey(os.Getenv("GEMINI_API_KEY")))
-				if err != nil {
-					log.Fatal(err)
-				}
-				defer client.Close()
+					weather, err := s.GetWeather(fmt.Sprintf("%f", schedule.OriLatitude), fmt.Sprintf("%f", schedule.OriLongitude), fmt.Sprintf("%f", schedule.DestLatitude), fmt.Sprintf("%f", schedule.DestLongitude), travelTimeText)
+					if err != nil {
+						log.Printf("Failed to get weather: %v", err)
+					}
 
-				model := client.GenerativeModel("gemini-1.5-flash")
-				resp, err := model.GenerateContent(ctx, genai.Text(fmt.Sprintf(`
+					ctx := context.Background()
+					client, err := genai.NewClient(ctx, option.WithAPIKey(os.Getenv("GEMINI_API_KEY")))
+					if err != nil {
+						log.Fatal(err)
+					}
+					defer client.Close()
+
+					model := client.GenerativeModel("gemini-1.5-flash")
+					resp, err := model.GenerateContent(ctx, genai.Text(fmt.Sprintf(`
 							Based on the following travel details, calculate the adjusted travel time between the two locations:
 						  
 							- Origin coordinates: Latitude %f, Longitude %f
@@ -137,15 +140,21 @@ func (s *scheduleService) autoUpdateSchedules() {
 							Adjust the travel time by accounting for the effects of traffic and weather conditions on the route. Return only the adjusted travel time as a numeric value in minutes, without any additional text or explanation.
 						  `, schedule.OriLatitude, schedule.OriLongitude, schedule.DestLatitude, schedule.DestLongitude, travelTimeText, schedules[0].Transportation, traffic, weather[0], weather[1])))
 
-				if err != nil {
-					log.Fatal(err)
-				}
+					if err != nil {
+						log.Fatal(err)
+					}
 
-				geminiTravelTime := strings.TrimSpace(fmt.Sprintf("%v", resp.Candidates[0].Content.Parts[0])) + " mins"
+					geminiTravelTime := strings.TrimSpace(fmt.Sprintf("%v", resp.Candidates[0].Content.Parts[0])) + " mins"
 
-				travelDuration, err := parseDuration(geminiTravelTime)
-				if err != nil {
-					log.Printf("failed to parse travel duration: %v", err)
+					travelDuration, err = parseDuration(geminiTravelTime)
+					if err != nil {
+						log.Printf("failed to parse travel duration: %v", err)
+					}
+				} else {
+					travelDuration, err = parseDuration(travelTimeText)
+					if err != nil {
+						log.Printf("failed to parse travel duration: %v", err)
+					}
 				}
 
 				startTime, err := time.Parse("15:04", newStartTime)
@@ -451,7 +460,7 @@ func (s *scheduleService) handleTravelSchedule(schedule *ScheduleInput) (time.Du
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert leave home schedule: %v", err)
 	}
-	
+
 	return travelDuration, nil
 }
 
