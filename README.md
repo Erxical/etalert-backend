@@ -22,19 +22,19 @@ This is the installation guide for ETAlert-Backend project
 3. Create an environment file:
     ```env
     # Google Map
-    G_MAP_API_KEY=<PUT APIKEY HERE>
+    G_MAP_API_KEY=<PUT API_KEY HERE>
 
     # Gemini
-    GEMINI_API_KEY=<PUT APIKEY HERE>
+    GEMINI_API_KEY=<PUT API_KEY HERE>
 
     # Azure Map
-    AZURE_MAP_API_KEY=<PUT APIKEY HERE>
+    AZURE_MAP_API_KEY=<PUT API_KEY HERE>
 
     # MongoDB
-    MONGODB_URI=<PUT APIKEY HERE>
+    MONGODB_URI=<PUT API_KEY HERE>
 
     # JWT
-    JWT_SECRET=<PUT APIKEY HERE>
+    JWT_SECRET=<SECRET>
     ```
 
    ### 3.1. Get Google Map API Key
@@ -73,6 +73,9 @@ This is the installation guide for ETAlert-Backend project
      - Choose **Drivers**
      - Set **Driver** to 'Go' and **Driver version** to '1.6 or later'
      - Copy the connection string
+
+    ### 3.5. JWT Secret
+     - JWT Secret can be any string
 
 4. Run the application:
     ```bash
