@@ -1,11 +1,6 @@
 # etalert-backend
 
-etalert-backend is a backend service for the Etalert application, built with Go. It provides real-time alerts via WebSockets and is designed to integrate easily with various services. This repository contains the backend logic, including handlers, services, and middlewares for managing alerts.
-
-## Features
-- Real-time alerts using WebSockets
-- Efficient data handling with middlewares
-- Scalable and extensible architecture
+This is the installation guide for ETAlert-Backend project
 
 ## Requirements
 - Go 1.18+
@@ -23,9 +18,9 @@ etalert-backend is a backend service for the Etalert application, built with Go.
     ```bash
     go mod tidy
     ```
-    
-3. Create environment file:
-   ```env
+
+3. Create an environment file:
+    ```env
     # Google Map
     G_MAP_API_KEY=<PUT APIKEY HERE>
 
@@ -41,7 +36,44 @@ etalert-backend is a backend service for the Etalert application, built with Go.
     # JWT
     JWT_SECRET=<PUT APIKEY HERE>
     ```
-   
+
+   ### 3.1. Get Google Map API Key
+   - Go to [Google Maps API](https://developers.google.com/maps)
+   - Sign in to your account
+   - Go to the **Keys & Credentials** tab on the left sidebar
+   - Click on the **Create Credentials** button at the top left
+   - Copy the API Key
+
+   ### 3.2. Get Gemini API Key
+   - Go to [Gemini API](https://aistudio.google.com/)
+   - Sign in to your account
+   - Click on the **Get API key** button at the top left of the sidebar
+   - Click on **Create API key** button
+   - Choose the project
+   - Copy the API Key
+  
+   ### 3.3. Get Azure Map API Key
+     - Go to [Azure Portal](https://portal.azure.com/#home)
+     - Sign in to your account
+     - Type 'Azure Maps Accounts' in the search bar and click on it
+     - Click on the **Create** button
+     - Choose Subscription, Resource group, name, and region
+     - Check the agreement box at the bottom of the Basics tab
+     - Click **Review + Create** then **Create**
+     - Click on the account you just created
+     - On the sidebar, click **Settings** then **Authentication**
+     - Copy the Primary Key
+
+    ### 3.4. Get MongoDB URI
+     - Go to [MongoDB Atlas](https://www.mongodb.com/products/platform/atlas-database)
+     - Click **Sign in**, then sign in with your account of choice
+     - On the **Overview** tab, click **Create cluster**
+     - Use the **Free Plan**
+     - On the **Overview** tab under your cluster's name, click **Connect**
+     - Choose **Drivers**
+     - Set **Driver** to 'Go' and **Driver version** to '1.6 or later'
+     - Copy the connection string
+
 4. Run the application:
     ```bash
     go run main.go
@@ -59,10 +91,4 @@ etalert-backend is a backend service for the Etalert application, built with Go.
 - `service/`: Business logic of the application
 - `validators/`: Input validation logic
 - `websocket/`: WebSocket-related implementations
-
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contributing
-Feel free to open an issue or submit a pull request. Contributions are always welcome!
 
