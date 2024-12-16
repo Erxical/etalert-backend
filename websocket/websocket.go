@@ -1,24 +1,23 @@
 package websocket
 
 import (
-    "log"
-    "github.com/gofiber/websocket/v2"
+	"encoding/json"
+	"log"
+
+	"github.com/gofiber/websocket/v2"
 )
 
-var clients = make(map[*websocket.Conn]bool) // Connected clients
+var clients = make(map[*websocket.Conn]string)// Connected clients
 var broadcast = make(chan []byte)            // Broadcast channel
 
-// HandleConnections handles incoming WebSocket connections
 func HandleConnections(c *websocket.Conn) {
     defer func() {
         c.Close()
         delete(clients, c)
     }()
 
-    // Register the new client
-    clients[c] = true
-
-    // Listen for messages (if needed)
+    // Wait for the client to send the initial message with the userId
+    var userId string
     for {
         _, message, err := c.ReadMessage()
         if err != nil {
@@ -27,20 +26,38 @@ func HandleConnections(c *websocket.Conn) {
             break
         }
 
-        // Optionally handle incoming messages from the client
-        log.Printf("Received: %s", message)
+        // Assume the first message from the client is the userId
+        var initMsg map[string]string
+        if err := json.Unmarshal(message, &initMsg); err != nil {
+            log.Printf("error unmarshaling init message: %v", err)
+            continue
+        }
+
+        if id, ok := initMsg["userId"]; ok {
+            userId = id
+            clients[c] = userId
+            log.Printf("Registered userId %s with connection", userId)
+            break
+        }
+    }
+
+    // Listen for further messages (optional)
+    for {
+        _, message, err := c.ReadMessage()
+        if err != nil {
+            log.Printf("error: %v", err)
+            delete(clients, c)
+            break
+        }
+
+        log.Printf("Received from %s: %s", userId, message)
     }
 }
 
-// HandleMessages broadcasts messages to all clients
-func HandleMessages() {
-    for {
-        // Grab the next message from the broadcast channel
-        message := <-broadcast
-
-        // Send the message to all connected clients
-        for client := range clients {
-            err := client.WriteMessage(websocket.TextMessage, message)
+func SendUpdate(updateMessage []byte, targetUserId string) {
+    for client, userId := range clients {
+        if userId == targetUserId { // Only send to the specific user
+            err := client.WriteMessage(websocket.TextMessage, updateMessage)
             if err != nil {
                 log.Printf("error: %v", err)
                 client.Close()
@@ -48,9 +65,4 @@ func HandleMessages() {
             }
         }
     }
-}
-
-// SendUpdate broadcasts schedule updates to all clients
-func SendUpdate(updateMessage []byte) {
-    broadcast <- updateMessage
 }

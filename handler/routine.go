@@ -3,8 +3,9 @@ package handler
 import (
 	"etalert-backend/service"
 	"etalert-backend/validators"
-	"github.com/gofiber/fiber/v2"
 	"net/http"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 type RoutineHandler struct {
@@ -12,10 +13,16 @@ type RoutineHandler struct {
 }
 
 type createRoutineRequest struct {
-	GoogleId string `json:"googleId" validate:"required"`
-	Name     string `json:"name" validate:"required"`
-	Duration int    `json:"duration" validate:"required"`
-	Order    int    `json:"order" validate:"required"`
+	GoogleId string   `json:"googleId" validate:"required"`
+	Name     string   `json:"name" validate:"required"`
+	Duration int      `json:"duration" validate:"required"`
+	Order    int      `json:"order" validate:"required"`
+}
+
+type updateRoutineRequest struct {
+	Name     string   `json:"name" validate:"required"`
+	Duration int      `json:"duration" validate:"required"`
+	Order    int      `json:"order" validate:"required"`
 }
 
 type createRoutineResponse struct {
@@ -65,8 +72,8 @@ func (h *RoutineHandler) GetAllRoutines(c *fiber.Ctx) error {
 }
 
 func (h *RoutineHandler) UpdateRoutine(c *fiber.Ctx) error {
-	googleId := c.Params("googleId")
-	var req createRoutineRequest
+	id := c.Params("id")
+	var req updateRoutineRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
 	}
@@ -75,15 +82,25 @@ func (h *RoutineHandler) UpdateRoutine(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	routine := &service.RoutineResponse{
+	routine := &service.RoutineUpdateInput{
 		Name:     req.Name,
 		Duration: req.Duration,
 		Order:    req.Order,
 	}
 
-	err := h.routinesrv.UpdateRoutine(googleId, routine)
+	err := h.routinesrv.UpdateRoutine(id, routine)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update routine"})
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Routine updated successfully"})
+}
+
+func (h *RoutineHandler) DeleteRoutine(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	err := h.routinesrv.DeleteRoutine(id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete routine"})
+	}
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Routine deleted successfully"})
 }

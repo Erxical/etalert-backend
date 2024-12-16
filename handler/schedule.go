@@ -26,10 +26,11 @@ type createScheduleRequest struct {
 	DestName        string  `json:"destName"`
 	DestLatitude    float64 `json:"destLatitude"`
 	DestLongitude   float64 `json:"destLongitude"`
+	Transportation  string  `json:"transportation"`
 	Priority        int     `json:"priority"`
 	IsHaveLocation  bool    `json:"isHaveLocation"`
 	IsFirstSchedule bool    `json:"isFirstSchedule"`
-
+	TagId           string  `json:"tagId"`
 	Recurrence      string  `json:"recurrence"`
 	RecurrenceId    int     `json:"recurrenceId"`
 }
@@ -73,10 +74,11 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 		DestName:        req.DestName,
 		DestLatitude:    req.DestLatitude,
 		DestLongitude:   req.DestLongitude,
+		Transportation:  req.Transportation,
 		Priority:        req.Priority,
 		IsHaveLocation:  req.IsHaveLocation,
 		IsFirstSchedule: req.IsFirstSchedule,
-
+		TagId:           req.TagId,
 		Recurrence:      req.Recurrence,
 	}
 
@@ -88,7 +90,7 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 		if str != "" {
 			return c.Status(fiber.StatusCreated).JSON(createScheduleResponse{Message: "Schedule created successfully with warning " + str})
 		}
-	
+
 		return c.Status(fiber.StatusCreated).JSON(createScheduleResponse{Message: "Schedule created successfully"})
 	}
 
@@ -131,6 +133,33 @@ func (h *ScheduleHandler) GetScheduleById(c *fiber.Ctx) error {
 	return c.JSON(schedule)
 }
 
+func (h *ScheduleHandler) GetSchedulesIdByRecurrenceId(c *fiber.Ctx) error {
+	recurrenceId := c.Params("recurrenceId")
+	date := c.Params("date", "")
+
+	schedules, err := h.schedulesrv.GetSchedulesIdByRecurrenceId(recurrenceId, date)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get schedule"})
+	}
+	if len(schedules) == 0 {
+		return c.JSON([]interface{}{})
+	}
+	return c.JSON(schedules)
+}
+
+func (h *ScheduleHandler) GetSchedulesByGroupId(c *fiber.Ctx) error {
+	groupId := c.Params("groupId")
+
+	schedules, err := h.schedulesrv.GetSchedulesByGroupId(groupId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get schedule"})
+	}
+	if len(schedules) == 0 {
+		return c.JSON([]interface{}{})
+	}
+	return c.JSON(schedules)
+}
+
 func (h *ScheduleHandler) UpdateSchedule(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var req updateScheduleRequest
@@ -159,6 +188,35 @@ func (h *ScheduleHandler) UpdateSchedule(c *fiber.Ctx) error {
 	return c.JSON(createScheduleResponse{Message: "Schedule updated successfully"})
 }
 
+func (h *ScheduleHandler) UpdateScheduleByRecurrenceId(c *fiber.Ctx) error {
+	recurrenceId := c.Params("recurrenceId")
+	date := c.Params("date", "")
+	var req updateScheduleRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+	}
+
+	if err := validators.ValidateStruct(req); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	schedule := &service.ScheduleUpdateInput{
+		Name:          req.Name,
+		Date:          req.Date,
+		StartTime:     req.StartTime,
+		EndTime:       req.EndTime,
+		IsHaveEndTime: req.IsHaveEndTime,
+	}
+
+	err := h.schedulesrv.UpdateScheduleByRecurrenceId(recurrenceId, schedule, date)
+	if err != nil {
+		fmt.Println(err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update schedule"})
+	}
+
+	return c.JSON(createScheduleResponse{Message: "Schedule updated successfully"})
+}
+
 func (h *ScheduleHandler) DeleteSchedule(c *fiber.Ctx) error {
 	groupId := c.Params("groupId")
 
@@ -172,8 +230,9 @@ func (h *ScheduleHandler) DeleteSchedule(c *fiber.Ctx) error {
 
 func (h *ScheduleHandler) DeleteScheduleByRecurrenceId(c *fiber.Ctx) error {
 	recurrenceId := c.Params("recurrenceId")
+	date := c.Params("date", "")
 
-	err := h.schedulesrv.DeleteScheduleByRecurrenceId(recurrenceId)
+	err := h.schedulesrv.DeleteScheduleByRecurrenceId(recurrenceId, date)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete schedule"})
 	}

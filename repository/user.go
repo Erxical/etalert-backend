@@ -11,4 +11,5 @@ type UserRepository interface {
 	InsertUser(user *User) error
 	GetUserInfo(string) (*User, error)
 	UpdateUser(string, *User) error
+	GetAllUsersId() ([]string, error)
 }

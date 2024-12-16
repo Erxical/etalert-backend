@@ -47,3 +47,22 @@ func (r userRepositoryDB) UpdateUser(gId string, user *User) error {
 	_, err := r.collection.UpdateOne(ctx, filter, update)
 	return err
 }
+
+func (r userRepositoryDB) GetAllUsersId() ([]string, error) {
+	ctx := context.Background()
+	var users []string
+	cursor, err := r.collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var user User
+		err := cursor.Decode(&user)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user.GoogleId)
+	}
+	return users, nil
+}

@@ -38,10 +38,10 @@ type DistanceMatrixResponse struct {
 	Status string `json:"status"`
 }
 
-func (s *scheduleRepositoryDB) GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, depTime string) (string, error) {
+func (s *scheduleRepositoryDB) GetTravelTime(oriLat string, oriLong string, destLat string, destLong string, mode string, depTime string) (string, error) {
 	godotenv.Load()
 	apiKey := os.Getenv("G_MAP_API_KEY")
-	url := fmt.Sprintf("https://maps.googleapis.com/maps/api/distancematrix/json?origins=%s,%s&destinations=%s,%s&mode=driving&departure_time=%s&key=%s", oriLat, oriLong, destLat, destLong, depTime, apiKey)
+	url := fmt.Sprintf("https://maps.googleapis.com/maps/api/distancematrix/json?origins=%s,%s&destinations=%s,%s&mode=%s&departure_time=%s&key=%s", oriLat, oriLong, destLat, destLong, mode, depTime, apiKey)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 
@@ -72,6 +72,58 @@ func (s *scheduleRepositoryDB) GetTravelTime(oriLat string, oriLong string, dest
 
 	// Return the duration text
 	return element.Duration.Text, nil
+}
+
+func (s *scheduleRepositoryDB) GetTraffic(minLat float64, minLong float64, maxLat float64, maxLong float64) (TrafficResponse, error) {
+	godotenv.Load()
+	apiKey := os.Getenv("AZURE_MAP_API_KEY")
+	url := fmt.Sprintf("https://atlas.microsoft.com/traffic/incident/detail/json?subscription-key=%s&api-version=1.0&style=s3&boundingbox=%f,%f,%f,%f&boundingZoom=11&trafficmodelid=-1&language=en-US&projection=EPSG4326", apiKey, minLat, minLong, maxLat, maxLong)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	response, err := client.Get(url)
+	if err != nil {
+		return TrafficResponse{}, fmt.Errorf("failed to fetch traffic data: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return TrafficResponse{}, fmt.Errorf("received non-200 response status: %d", response.StatusCode)
+	}
+
+	var trafficData TrafficResponse
+	err = json.NewDecoder(response.Body).Decode(&trafficData)
+	if err != nil {
+		return TrafficResponse{}, fmt.Errorf("failed to parse response: %v", err)
+	}
+
+	return trafficData, nil
+}
+
+func (s *scheduleRepositoryDB) GetWeather(oriLat string, oriLong string, destLat string, destLong string, travelTime string) (Forecast, error) {
+	godotenv.Load()
+	apiKey := os.Getenv("AZURE_MAP_API_KEY")
+	url := fmt.Sprintf("https://atlas.microsoft.com/weather/route/json?subscription-key=%s&api-version=1.1&query=%s,%s,0:%s,%s,%s", apiKey, oriLat, oriLong, destLat, destLong, travelTime)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	response, err := client.Get(url)
+	if err != nil {
+		return Forecast{}, fmt.Errorf("failed to fetch weather data: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return Forecast{}, fmt.Errorf("received non-200 response status: %d", response.StatusCode)
+	}
+
+	var weatherData Forecast
+	err = json.NewDecoder(response.Body).Decode(&weatherData)
+	if err != nil {
+		return Forecast{}, fmt.Errorf("failed to parse response: %v", err)
+	}
+
+	return weatherData, nil
 }
 
 func (s *scheduleRepositoryDB) GetNextGroupId() (int, error) {
@@ -153,7 +205,11 @@ func (s *scheduleRepositoryDB) GetAllSchedules(gId string, date string) ([]*Sche
 
 	filter := bson.M{"googleId": gId}
 	if date != "" {
-		filter["date"] = date
+		parsedDate, err := time.Parse("02-01-2006", date)
+		if err != nil {
+			return nil, fmt.Errorf("invalid date format: %v", err)
+		}
+		filter["date"] = parsedDate
 	}
 
 	cursor, err := s.collection.Find(ctx, filter, options.Find().SetSort(bson.D{
@@ -228,6 +284,85 @@ func (s *scheduleRepositoryDB) GetSchedulesByGroupId(groupId int) ([]*Schedule, 
 	return schedules, nil
 }
 
+func (s *scheduleRepositoryDB) GetMainSchedulesByRecurrenceId(recurrenceId int, date string) ([]*Schedule, error) {
+	ctx := context.Background()
+	var schedules []*Schedule
+
+	filter := bson.M{
+		"recurrenceId": recurrenceId,
+		"recurrence":   bson.M{"$ne": ""},
+	}
+	if date != "" {
+		parsedDate, err := time.Parse("02-01-2006", date)
+		if err != nil {
+			return nil, fmt.Errorf("invalid date format: %v", err)
+		}
+		filter["date"] = bson.M{"$gte": parsedDate}
+	}
+
+	cursor, err := s.collection.Find(ctx, filter, options.Find().SetSort(bson.D{
+		{Key: "date", Value: 1},
+		{Key: "startTime", Value: 1},
+	}))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var schedule Schedule
+		if err := cursor.Decode(&schedule); err != nil {
+			return nil, err
+		}
+		schedules = append(schedules, &schedule)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return schedules, nil
+}
+
+func (s *scheduleRepositoryDB) GetSchedulesByRecurrenceId(recurrenceId int, date string) ([]*Schedule, error) {
+	ctx := context.Background()
+	var schedules []*Schedule
+
+	filter := bson.M{
+		"recurrenceId": recurrenceId,
+	}
+	if date != "" {
+		parsedDate, err := time.Parse("02-01-2006", date)
+		if err != nil {
+			return nil, fmt.Errorf("invalid date format: %v", err)
+		}
+		filter["date"] = bson.M{"$gte": parsedDate}
+	}
+
+	cursor, err := s.collection.Find(ctx, filter, options.Find().SetSort(bson.D{
+		{Key: "date", Value: 1},
+		{Key: "startTime", Value: 1},
+	}))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var schedule Schedule
+		if err := cursor.Decode(&schedule); err != nil {
+			return nil, err
+		}
+		schedules = append(schedules, &schedule)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return schedules, nil
+}
+
 func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) error {
 	ctx := context.Background()
 
@@ -238,11 +373,28 @@ func (s *scheduleRepositoryDB) UpdateSchedule(id string, schedule *Schedule) err
 	filter := bson.M{"_id": (objectId)}
 
 	update := bson.M{"$set": bson.M{
-		"name":          schedule.Name,
-		"date":          schedule.Date,
-		"startTime":     schedule.StartTime,
-		"endTime":       schedule.EndTime,
-		"isHaveEndTime": schedule.IsHaveEndTime,
+		"googleId":        schedule.GoogleId,
+		"routineId":       schedule.RoutineId,
+		"name":            schedule.Name,
+		"date":            schedule.Date,
+		"startTime":       schedule.StartTime,
+		"endTime":         schedule.EndTime,
+		"isHaveEndTime":   schedule.IsHaveEndTime,
+		"oriName":         schedule.OriName,
+		"oriLatitude":     schedule.OriLatitude,
+		"oriLongitude":    schedule.OriLongitude,
+		"destName":        schedule.DestName,
+		"destLatitude":    schedule.DestLatitude,
+		"destLongitude":   schedule.DestLongitude,
+		"groupId":         schedule.GroupId,
+		"priority":        schedule.Priority,
+		"isHaveLocation":  schedule.IsHaveLocation,
+		"isFirstSchedule": schedule.IsFirstSchedule,
+		"isTraveling":     schedule.IsTraveling,
+		"isUpdated":       false,
+		"tagId":           schedule.TagId,
+		"recurrence":      schedule.Recurrence,
+		"recurrenceId":    schedule.RecurrenceId,
 	},
 	}
 
@@ -281,9 +433,16 @@ func (s *scheduleRepositoryDB) DeleteSchedule(groupId int) error {
 	return err
 }
 
-func (s *scheduleRepositoryDB) DeleteScheduleByRecurrenceId(recurrenceId int) error {
+func (s *scheduleRepositoryDB) DeleteScheduleByRecurrenceId(recurrenceId int, date string) error {
 	ctx := context.Background()
 	filter := bson.M{"recurrenceId": recurrenceId}
+	if date != "" {
+		parsedDate, err := time.Parse("02-01-2006", date)
+		if err != nil {
+			return fmt.Errorf("invalid date format: %v", err)
+		}
+		filter["date"] = bson.M{"$gte": parsedDate}
+	}
 
 	_, err := s.collection.DeleteMany(ctx, filter)
 	return err
