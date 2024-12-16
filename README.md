@@ -23,15 +23,33 @@ etalert-backend is a backend service for the Etalert application, built with Go.
     ```bash
     go mod tidy
     ```
+    
+3. Create environment file:
+   ```env
+    # Google Map
+    G_MAP_API_KEY=<PUT APIKEY HERE>
 
-3. Run the application:
+    # Gemini
+    GEMINI_API_KEY=<PUT APIKEY HERE>
+
+    # Azure Map
+    AZURE_MAP_API_KEY=<PUT APIKEY HERE>
+
+    # MongoDB
+    MONGODB_URI=<PUT APIKEY HERE>
+
+    # JWT
+    JWT_SECRET=<PUT APIKEY HERE>
+    ```
+   
+4. Run the application:
     ```bash
     go run main.go
     ```
 
-4. To build a Docker image:
+5. To build a Docker image:
     ```bash
-    docker build -t etalert-backend .
+    docker build -t etalert-backend ./Dockerfile .
     ```
 
 ## Directory Structure
